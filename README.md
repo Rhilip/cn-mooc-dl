@@ -9,11 +9,10 @@ And This script is still a Semi-finished products.
 Windows users:
 * Download Python3 from it's website:[Python3](https://www.python.org/download/releases/3.0/),and install it into PATH.
 * Install [Request](http://docs.python-requests.org/zh_CN/latest/user/install.html#install) model:
-You can run this in CMD
 ```
 pip install request
 ```
-or 
+If you can't connect to pypi,Use this command:
 ```
 python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests
 ```
@@ -39,12 +38,15 @@ raw_cookies = ''
 # Course url (with key "tid")
 url = ''
 ```
+* Remember a "Session-Cookies" pair can be used a serveral time(maybe 1-2 days) until the service reply "message:not_auth",so you could get another course only to change course url.
 
 ### 3)Run this script
 * just run it and you will get some file.
 ```
 dllink.txt : the video download link
 docsdllink.txt : the document download link,You should download those as soon as possible 
-ren.bat : Rename script for downloaded video
+ren.bat : Rename script for downloaded video.Before use,edit it so make videoes easier to organize
 ```
 * Use Download tools (,for example IDM...) to download.
+* Use "ren.bat" to rename the video.
+* Sort those videos and documents logically
