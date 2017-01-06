@@ -34,6 +34,7 @@ for key, morsel in cookie.items():
 
 # getLessonUnitLearnVo (This funciton will return a dict with download info)     #延迟
 def getLessonUnitLearnVo(contentId, id, contentType):
+    'VERSION : 20170106'
     # prepare data and post
     payload = {
         'callCount': 1,
@@ -58,23 +59,37 @@ def getLessonUnitLearnVo(contentId, id, contentType):
         info['contentType'] = 1
         info['videoImgUrl'] = str(re.search(r's\d+.videoImgUrl="(.+?)";', rdata).group(1))
 
-        if rdata.find('flvHdUrl="http'):
-            info['flvHdUrl'] = str(re.search(r's\d+.flvHdUrl="(.+?\.flv).+?";', rdata).group(1))
-        if rdata.find('flvSdUrl="http'):
+        # Get Video download link
+        videoType = []
+        # flv
+        if re.search(r's\d+.flvSdUrl=".+?";', rdata):  # flvSd
             info['flvSdUrl'] = str(re.search(r's\d+.flvSdUrl="(.+?\.flv).+?";', rdata).group(1))
-        if rdata.find('flvShdUrl="http'):
+            videoType.append("flvSdUrl")
+        if re.search(r's\d+.flvHdUrl=".+?";', rdata):  # flvHd
+            info['flvHdUrl'] = str(re.search(r's\d+.flvHdUrl="(.+?\.flv).+?";', rdata).group(1))
+            videoType.append("flvHdUrl")
+        if re.search(r's\d+.flvShdUrl=".+?";', rdata):  # flvShd
             info['flvShdUrl'] = str(re.search(r's\d+.flvShdUrl="(.+?\.flv).+?";', rdata).group(1))
-        if rdata.find('mp4HdUrl="http'):
-            info['mp4HdUrl'] = str(re.search(r's\d+.mp4HdUrl="(.+?\.mp4).+?";', rdata).group(1))
-        if rdata.find('mp4SdUrl="http'):
+            videoType.append("flvShdUrl")
+        # mp4
+        if re.search(r's\d+.mp4SdUrl=".+?";', rdata):  # mp4Sd
             info['mp4SdUrl'] = str(re.search(r's\d+.mp4SdUrl="(.+?\.mp4).+?";', rdata).group(1))
-        if rdata.find('mp4ShdUrl="http'):
+            videoType.append("mp4SdUrl")
+        if re.search(r's\d+.mp4HdUrl=".+?";', rdata):  # mp4Hd
+            info['mp4HdUrl'] = str(re.search(r's\d+.mp4HdUrl="(.+?\.mp4).+?";', rdata).group(1))
+            videoType.append("mp4HdUrl")
+        if re.search(r's\d+.mp4ShdUrl=".+?";', rdata):  # mp4Shd
             info['mp4ShdUrl'] = str(re.search(r's\d+.mp4ShdUrl="(.+?\.mp4).+?";', rdata).group(1))
+            videoType.append("mp4ShdUrl")
+        # type of resulting video
+        info["videoType"] = videoType
 
-            """ 如果存在字幕的话
-           s0.name="\u4E2D\u6587";s0.url="http://www.icourse163.org/video/downloadVideoSrt.htm?srcKey=D2CEC15B003DB2C6CB8DEAA45A180C56-1469109042399";
-           s1.name="\u82F1\u6587";s1.url="http://www.icourse163.org/video/downloadVideoSrt.htm?srcKey=7E38EBCF9D1E932F3B9DAD349D9336A8-1469109072124";
-           """
+        # Subtitle
+        if re.search(r's\d+.name="\u4E2D\u6587";s\d+.url="(.+?)"', rdata):  # Chinese
+            info['ChsStr'] = str(re.search(r's\d+.name="\u4E2D\u6587";s\d+.url="(.+?)"', rdata).group(1))
+        if re.search(r's\d+.name="\u82F1\u6587";s\d+.url="(.+?)"', rdata):  # English
+            info['EngStr'] = str(re.search(r's\d+.name="\u82F1\u6587";s\d+.url="(.+?)"', rdata).group(1))
+
     # if contentType == 2: # 单元测试
     if contentType == 3:  # 文档
         info['textOrigUrl'] = str(re.search(r'textOrigUrl:"(.+?)"', rdata).group(1))
