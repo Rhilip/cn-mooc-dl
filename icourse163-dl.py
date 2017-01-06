@@ -7,14 +7,12 @@ from urllib.parse import unquote
 
 # -*- Config
 # Warning:Before start ,You should fill in these forms.
+# Course url (with key "tid")
+url = ''
 # Session
 httpSessionId = ''
 # cookies
 raw_cookies = ''
-# Course url (with key "tid")
-url = ''
-#Download Docs Immediately(True or False)
-wdimmediate = False
 # Post Header(Don't change)
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36',
@@ -22,6 +20,8 @@ headers = {
     'Accept-Language': 'zh-CN,zh;q=0.8',
     'Content-Type': 'text/plain',
 }
+#Download Docs Immediately(True or False)
+wdimmediate = True
 
 # -*- Api
 # Arrange Cookies from raw
@@ -92,6 +92,7 @@ def getLessonUnitLearnVo(contentId, id, contentType):
 
     # if contentType == 2: # 单元测试
     if contentType == 3:  # 文档
+        info['contentType'] = 3
         info['textOrigUrl'] = str(re.search(r'textOrigUrl:"(.+?)"', rdata).group(1))
     # if contentType == 4:  # 富文本
     # if contentType == 5:  # 考试
@@ -137,18 +138,24 @@ for index in rdata:
     # Structure lesson
     if re.match(r's(\d+).anchorQuestions=', index):
         lesson = sort_lesson(index)
-        dllink = lesson['info'].get('mp4ShdUrl')     #这里选择导出的视频文件格式和分辨率
-        if dllink:
+        lessontype = lesson['info'].get('contentType')
+        if lessontype == 1:    #视频
+            bestvideo = lesson['info'].get('videoType')
+            dllink = lesson['info'].get(bestvideo[-1])  # 这里选择导出的视频文件格式和分辨率
             dlfile = re.search(r'/(\d+?_.+?.mp4)', dllink).group(1)
             print(dllink)
             open("dllink.txt", "a").write(dllink + "\n")
-            new = "ren " + dlfile + " \"" + str(lesson.get('name')) + ".mp4\"\n"
+            if bestvideo[-1] == 'mp4ShdUrl':
+                new = "ren " + dlfile + " \"" + str(lesson.get('name')) + ".mp4\"\n"
+            else :
+                videotype = re.search(r'^(flv|mp4)(Sd|Hd|Shd)Url',str(bestvideo[-1]))
+                new = "ren " + dlfile + " \"" + str(lesson.get('name')) + "_" + str(videotype.group(2)) + "."+ str(videotype.group(1)) + "\"\n"
             print(new)
             open("ren.bat", "a").write(new)
             cont[0] += 1
 
-        wdlink = lesson['info'].get('textOrigUrl')
-        if wdlink:
+        if lessontype == 3:  # 视频
+            wdlink = lesson['info'].get('textOrigUrl')
             print(wdlink)
             if wdimmediate:
                 filename = unquote(re.search(r'&download=(.+)', wdlink).group(1)).replace("+", " ")
@@ -160,4 +167,4 @@ for index in rdata:
                 open("docsdllink.txt", "a").write(wdlink + "\n")
             cont[1] += 1
 
-print("共获得\n视频：", cont[0], "\n文档：", cont[1])
+print("Found {0} Videoes and {1} Text on this page".format(cont[0],cont[1]))
