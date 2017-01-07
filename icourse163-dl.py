@@ -20,7 +20,7 @@ headers = {
     'Accept-Language': 'zh-CN,zh;q=0.8',
     'Content-Type': 'text/plain',
 }
-#Download Docs Immediately(True or False)
+# Download Docs Immediately(True or False)
 wdimmediate = True
 
 # -*- Api
@@ -32,9 +32,9 @@ for key, morsel in cookie.items():
     cookies[key] = morsel.value
 
 
-# getLessonUnitLearnVo (This funciton will return a dict with download info)     #延迟
+# getLessonUnitLearnVo (This funciton will return a dict with download info)
 def getLessonUnitLearnVo(contentId, id, contentType):
-    'VERSION : 20170106'
+    'VERSION : 20170107'
     # prepare data and post
     payload = {
         'callCount': 1,
@@ -43,19 +43,19 @@ def getLessonUnitLearnVo(contentId, id, contentType):
         'c0-scriptName': 'CourseBean',
         'c0-methodName': 'getLessonUnitLearnVo',
         'c0-id': 1,
-        'c0-param0': contentId,  # 1004102109,
+        'c0-param0': contentId,
         'c0-param1': contentType,
         'c0-param2': 0,
-        'c0-param3': id,  # 1002437570,
-        'batchId': random.randint(1000000000000, 20000000000000)  # 1479741724609
+        'c0-param3': id,
+        'batchId': random.randint(1000000000000, 20000000000000)
     }
     cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitLearnVo.dwr'
 
     rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies).text
-    print(rdata)
+    # print(rdata)
     info = {}  # info.clear()
     # Sort data depend on it's contentType into dict info
-    if contentType == 1:  # 视频
+    if contentType == 1:  # Video
         info['contentType'] = 1
         info['videoImgUrl'] = str(re.search(r's\d+.videoImgUrl="(.+?)";', rdata).group(1))
 
@@ -82,22 +82,23 @@ def getLessonUnitLearnVo(contentId, id, contentType):
             info['mp4ShdUrl'] = str(re.search(r's\d+.mp4ShdUrl="(.+?\.mp4).+?";', rdata).group(1))
             videoType.append("mp4ShdUrl")
         # type of resulting video
-        info["videoType"] = videoType
+        info["videoType"] = list(reversed(videoType))
 
         # Subtitle
-        if re.search(r's\d+.name="\u4E2D\u6587";s\d+.url="(.+?)"', rdata):  # Chinese
-            info['ChsStr'] = str(re.search(r's\d+.name="\u4E2D\u6587";s\d+.url="(.+?)"', rdata).group(1))
-        if re.search(r's\d+.name="\u82F1\u6587";s\d+.url="(.+?)"', rdata):  # English
-            info['EngStr'] = str(re.search(r's\d+.name="\u82F1\u6587";s\d+.url="(.+?)"', rdata).group(1))
+        if re.search(r's\d+.name="\\u4E2D\\u6587";s\d+.url="(.+?)"', rdata):  # Chinese
+            info['ChsSrt'] = str(re.search(r's\d+.name="\\u4E2D\\u6587";s\d+.url="(.+?)"', rdata).group(1))
+        if re.search(r's\d+.name="\\u82F1\\u6587";s\d+.url="(.+?)"', rdata):  # English
+            info['EngSrt'] = str(re.search(r's\d+.name="\\u82F1\\u6587";s\d+.url="(.+?)"', rdata).group(1))
 
-    # if contentType == 2: # 单元测试
-    if contentType == 3:  # 文档
+    # if contentType == 2: # Test
+    if contentType == 3:  # Documentation
         info['contentType'] = 3
         info['textOrigUrl'] = str(re.search(r'textOrigUrl:"(.+?)"', rdata).group(1))
-    # if contentType == 4:  # 富文本
-    # if contentType == 5:  # 考试
-    # if contentType == 6:  # 讨论
+    # if contentType == 4:  # Rich text
+    # if contentType == 5:  # Examination
+    # if contentType == 6:  # Discussion
 
+    #print(info)
     return info
 
 
@@ -117,6 +118,7 @@ def sort_lesson(index):
 # -*- End of Api
 
 # -*- Main
+print('Begin~')
 tid = re.search(r'tid=(\d+)', url).group(1)
 cont = [0,0]
 payload = {
@@ -126,35 +128,52 @@ payload = {
         'c0-scriptName': 'CourseBean',
         'c0-methodName': 'getLastLearnedMocTermDto',
         'c0-id': 0,
-        'c0-param0': tid,  # 1004102109,
-        'batchId': random.randint(1000000000000, 20000000000000)  # 1479741724609
+        'c0-param0': tid,
+        'batchId': random.randint(1000000000000, 20000000000000)
     }
 cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLastLearnedMocTermDto.dwr'
-rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies).text  # str -> list
-print(rdata)
-rdata = rdata.splitlines()
+rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies).text
+# print(rdata)
+rdata = rdata.splitlines()              # str -> list
 # Data cleaning
 for index in rdata:
     # Structure lesson
     if re.match(r's(\d+).anchorQuestions=', index):
         lesson = sort_lesson(index)
         lessontype = lesson['info'].get('contentType')
-        if lessontype == 1:    #视频
+        if lessontype == 1:    # Video
             bestvideo = lesson['info'].get('videoType')
-            dllink = lesson['info'].get(bestvideo[-1])  # 这里选择导出的视频文件格式和分辨率
+            dllink = lesson['info'].get(bestvideo[0])
             dlfile = re.search(r'/(\d+?_.+?.mp4)', dllink).group(1)
             print(dllink)
             open("dllink.txt", "a").write(dllink + "\n")
-            if bestvideo[-1] == 'mp4ShdUrl':
+            if bestvideo[0] == 'mp4ShdUrl':
                 new = "ren " + dlfile + " \"" + str(lesson.get('name')) + ".mp4\"\n"
-            else :
-                videotype = re.search(r'^(flv|mp4)(Sd|Hd|Shd)Url',str(bestvideo[-1]))
+            else:
+                videotype = re.search(r'^(flv|mp4)(Sd|Hd|Shd)Url',str(bestvideo[0]))
                 new = "ren " + dlfile + " \"" + str(lesson.get('name')) + "_" + str(videotype.group(2)) + "."+ str(videotype.group(1)) + "\"\n"
             print(new)
             open("ren.bat", "a").write(new)
             cont[0] += 1
+            # Subtitle
+            if lesson['info'].get('ChsSrt'):
+                print("Find Chinese Subtitle for this lesson,Begin download.")
+                srtdlink = str(lesson['info'].get('ChsSrt'))
+                chssrtname = str(lesson.get('name')) + '.chs.srt'
+                r = requests.get(srtdlink)
+                with open(chssrtname, "wb") as code:
+                    code.write(r.content)
+                    print("Download \"" + chssrtname + "\" OK!")
+            if lesson['info'].get('EngSrt'):
+                print("Find English Subtitle for this lesson,Begin download.")
+                srtdlink = str(lesson['info'].get('EngSrt'))
+                chssrtname = str(lesson.get('name')) + '.eng.srt'
+                r = requests.get(srtdlink)
+                with open(chssrtname, "wb") as code:
+                    code.write(r.content)
+                    print("Download \"" + chssrtname + "\" OK!")
 
-        if lessontype == 3:  # 视频
+        if lessontype == 3:  # Documentation
             wdlink = lesson['info'].get('textOrigUrl')
             print(wdlink)
             if wdimmediate:
