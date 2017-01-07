@@ -115,6 +115,14 @@ def sort_lesson(index):
                                   int(re.search(r'.contentType=(\d+);', index).group(1))),
         level='lesson'
     )
+
+
+# Download things
+def downloadCourseware(dllink, filename):
+    r = requests.get(dllink)
+    with open(filename, "wb") as code:
+        code.write(r.content)
+        print("Download \"" + filename + "\" OK!")
 # -*- End of Api
 
 # -*- Main
@@ -160,28 +168,20 @@ for index in rdata:
                 print("Find Chinese Subtitle for this lesson,Begin download.")
                 srtdlink = str(lesson['info'].get('ChsSrt'))
                 chssrtname = str(lesson.get('name')) + '.chs.srt'
-                r = requests.get(srtdlink)
-                with open(chssrtname, "wb") as code:
-                    code.write(r.content)
-                    print("Download \"" + chssrtname + "\" OK!")
+                downloadCourseware(srtdlink, chssrtname)
+
             if lesson['info'].get('EngSrt'):
                 print("Find English Subtitle for this lesson,Begin download.")
                 srtdlink = str(lesson['info'].get('EngSrt'))
                 chssrtname = str(lesson.get('name')) + '.eng.srt'
-                r = requests.get(srtdlink)
-                with open(chssrtname, "wb") as code:
-                    code.write(r.content)
-                    print("Download \"" + chssrtname + "\" OK!")
+                downloadCourseware(srtdlink, chssrtname)
 
         if lessontype == 3:  # Documentation
             wdlink = lesson['info'].get('textOrigUrl')
             print(wdlink)
             if wdimmediate:
                 filename = unquote(re.search(r'&download=(.+)', wdlink).group(1)).replace("+", " ")
-                r = requests.get(wdlink)
-                with open(filename, "wb") as code:
-                    code.write(r.content)
-                    print("Download " + filename + " OK!")
+                downloadCourseware(wdlink, filename)
             else:
                 open("docsdllink.txt", "a").write(wdlink + "\n")
             cont[1] += 1
