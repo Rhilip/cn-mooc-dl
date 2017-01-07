@@ -118,7 +118,7 @@ def sort_lesson(index):
 
 
 # Download things
-def downloadCourseware(dllink, filename):
+def downloadCourseware(dllink,filename):
     r = requests.get(dllink)
     with open(filename, "wb") as code:
         code.write(r.content)
@@ -150,16 +150,15 @@ for index in rdata:
         lesson = sort_lesson(index)
         lessontype = lesson['info'].get('contentType')
         if lessontype == 1:    # Video
-            bestvideo = lesson['info'].get('videoType')
+            bestvideo = lesson['info'].get('videoType')        # Choose download video Type
+            # Output video download link
             dllink = lesson['info'].get(bestvideo[0])
-            dlfile = re.search(r'/(\d+?_.+?.mp4)', dllink).group(1)
             print(dllink)
             open("dllink.txt", "a").write(dllink + "\n")
-            if bestvideo[0] == 'mp4ShdUrl':
-                new = "ren " + dlfile + " \"" + str(lesson.get('name')) + ".mp4\"\n"
-            else:
-                videotype = re.search(r'^(flv|mp4)(Sd|Hd|Shd)Url',str(bestvideo[0]))
-                new = "ren " + dlfile + " \"" + str(lesson.get('name')) + "_" + str(videotype.group(2)) + "."+ str(videotype.group(1)) + "\"\n"
+            # Output video rename command
+            dlfile = re.search(r'/(\d+?_.+?\.(mp4|flv))', dllink).group(1)
+            videotype = re.search(r'^(flv|mp4)(Sd|Hd|Shd)Url',str(bestvideo[0]))
+            new = "ren " + dlfile + " \"" + str(lesson.get('name')) + "_" + str(videotype.group(2)) + "."+ str(videotype.group(1)) + "\"\n"
             print(new)
             open("ren.bat", "a").write(new)
             cont[0] += 1
@@ -173,8 +172,8 @@ for index in rdata:
             if lesson['info'].get('EngSrt'):
                 print("Find English Subtitle for this lesson,Begin download.")
                 srtdlink = str(lesson['info'].get('EngSrt'))
-                chssrtname = str(lesson.get('name')) + '.eng.srt'
-                downloadCourseware(srtdlink, chssrtname)
+                engsrtname = str(lesson.get('name')) + '.eng.srt'
+                downloadCourseware(srtdlink, engsrtname)
 
         if lessontype == 3:  # Documentation
             wdlink = lesson['info'].get('textOrigUrl')
