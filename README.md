@@ -4,20 +4,17 @@ Script for downloading download MOOCs (include Video,Subtitle and Text...) in ic
 This script is not like [coursera-dl](https://github.com/coursera-dl/coursera-dl) or [youtube-dl](https://github.com/rg3/youtube-dl) at this time.
 And Remember This script is still a Semi-finished products.
 ## Instructions
-### 1) Prepare Python3 and model request
-Windows users:
+### 1) Prepare Python3 and model
 * Download Python3 from it's website:[Python3](https://www.python.org/downloads/),and install it into PATH.
-* Install [Request](http://docs.python-requests.org/zh_CN/latest/user/install.html#install) model,You can use this command:
+* Install model [Request](http://docs.python-requests.org/zh_CN/latest/user/install.html#install) and [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/bs4/doc/index.zh.html#id5),You can use this command:
 ```
-python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests
+python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests beautifulsoup4
 ```
-Other users:
-Update or install Python3 and model.
 
 * Also don't forget download this packet......
 
 ### 2) Get key information from website and fill those to "icourse163-dl.py"
-* Open [中国大学MOOC](http://www.icourse163.org/home.htm),and login in with email(163 or icourse),NOT OAUTH.
+* Open [icourse163.org](http://www.icourse163.org/home.htm),and login in with 163 email,NOT OAUTH.
 * Click in the course you want to download.and Open The 'Developer Tools'(In chrome,F12),turn to Network panel.Open Filter and choose "XHR".
 For example，
 ![Announce box](./pic/QQ截图20170105132604.jpg)
@@ -33,19 +30,25 @@ httpSessionId = ''
 # cookies
 raw_cookies = ''
 ```
-* Remember a "Session-Cookies" pair can be used for a long time until the service reply "message:not_auth" ,Then you should change it into a new one.But in it's survival time,you can get another course only to change course url.(Even the course you didn't participate in,Just need the right key "tid")
+* Remember a "Session-Cookies" pair can be used for a long time until the service reply message:"not_auth" or "Session Error" ,Then you should change it into a new one.But in it's survival time,you can get another course only to change course url.(Even the course you didn't participate in,Just need the right key "tid")
 
 ### 3) Run this script
 * just run it and you will get some file.
 ```
 dllink.txt : the video download link
 ren.bat : Rename script for downloaded video.Before use,edit it so make videoes easier to organize
-*docsdllink.txt : the document download link,You should download those as soon as possible 
-some *PDF or SRT
+*docsdllink.txt : the document download link(if "downloadDocs = False"),You should download those as soon as possible 
+some *PDF or SRT(if exists and "downloadSrt = True")
 ```
 * Use Download tools (,for example IDM...) to download.
 * Use "ren.bat" to rename the video.
 * Sort those videos and documents logically
 
+## Test Environment
+* Python :`v3.5.2`
+* OS : `Windows 10` and `Chrome 55`
+* IDE : `PyCharm 2016.3.1`
+* Download tools :`IDM`
+
 ## Met Problem
-Issues Please~
+* Issues Please~
