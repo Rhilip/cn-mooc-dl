@@ -21,6 +21,8 @@ headers = {
 }
 
 downloadSrt = True  # Download Chinese or English Srt (True or False)
+downloadVideoType = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl',
+                     'flvShdUrl', 'flvHdUrl', 'flvSdUrl']  # Choose first video download link(if exists)
 
 # -*- Api
 # Arrange Cookies from raw
@@ -57,25 +59,10 @@ def getLessonUnitLearnVo(contentId, id, contentType):
         info['videoImgUrl'] = str(re.search(r's\d+.videoImgUrl="(.+?)";', rdata).group(1))
 
         video_type = []    # Get Video download type
-        if re.search(r's\d+.mp4ShdUrl=".+?";', rdata):  # mp4Shd
-            info['mp4ShdUrl'] = str(re.search(r's\d+.mp4ShdUrl="(.+?\.mp4).+?";', rdata).group(1))
-            video_type.append("mp4ShdUrl")
-        if re.search(r's\d+.mp4HdUrl=".+?";', rdata):  # mp4Hd
-            info['mp4HdUrl'] = str(re.search(r's\d+.mp4HdUrl="(.+?\.mp4).+?";', rdata).group(1))
-            video_type.append("mp4HdUrl")
-        if re.search(r's\d+.mp4SdUrl=".+?";', rdata):  # mp4Sd
-            info['mp4SdUrl'] = str(re.search(r's\d+.mp4SdUrl="(.+?\.mp4).+?";', rdata).group(1))
-            video_type.append("mp4SdUrl")
-        if re.search(r's\d+.flvShdUrl=".+?";', rdata):  # flvShd
-            info['flvShdUrl'] = str(re.search(r's\d+.flvShdUrl="(.+?\.flv).+?";', rdata).group(1))
-            video_type.append("flvShdUrl")
-        if re.search(r's\d+.flvHdUrl=".+?";', rdata):  # flvHd
-            info['flvHdUrl'] = str(re.search(r's\d+.flvHdUrl="(.+?\.flv).+?";', rdata).group(1))
-            video_type.append("flvHdUrl")
-        if re.search(r's\d+.flvSdUrl=".+?";', rdata):  # flvSd
-            info['flvSdUrl'] = str(re.search(r's\d+.flvSdUrl="(.+?\.flv).+?";', rdata).group(1))
-            video_type.append("flvSdUrl")
-
+        for k in downloadVideoType:
+            if re.search(r's\d+.'+ str(k) + '=".+?";', rdata):
+                info[k] = str(re.search(r's\d+.'+ str(k) + r'="(.+?\.mp4).+?";', rdata).group(1))
+                video_type.append(k)
         # type of resulting video
         info["videoType"] = video_type
 

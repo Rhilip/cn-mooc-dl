@@ -1,8 +1,5 @@
 # icourse163-dl
 Script for downloading download MOOCs (include Video,Subtitle and Text...) in icourse163.org.
-
-This script is not like [coursera-dl](https://github.com/coursera-dl/coursera-dl) or [youtube-dl](https://github.com/rg3/youtube-dl) at this time.
-And Remember This script is still a Semi-finished products.
 ## Instructions
 ### 1) Prepare Python3 and model
 * Download Python3 from it's website:[Python3](https://www.python.org/downloads/),and install it into PATH.
@@ -30,6 +27,9 @@ httpSessionId = ''
 # cookies
 raw_cookies = ''
 ```
+```
+downloadSrt = True  # Download Chinese or English Srt (True or False)
+```
 * Remember a "Session-Cookies" pair can be used for a long time until the service reply message:"not_auth" or "Session Error" ,Then you should change it into a new one.But in it's survival time,you can get another course only to change course url.(Even the course you didn't participate in,Just need the right key "tid")
 
 ### 3) Run this script
@@ -37,11 +37,10 @@ raw_cookies = ''
 ```
 dllink.txt : the video download link
 ren.bat : Rename script for downloaded video.Before use,edit it so make videoes easier to organize
-*docsdllink.txt : the document download link(if "downloadDocs = False"),You should download those as soon as possible 
-some *PDF or SRT(if exists and "downloadSrt = True")
+some PDF or SRT(if exists and "downloadSrt = True")
 ```
-* Use Download tools (,for example IDM...) to download.
-* Use "ren.bat" to rename the video.
+* Use Download tools (,for example IDM...) to download course video.
+* Use "ren.bat" to rename the downloaded video.
 * Sort those videos and documents logically
 
 ## Test Environment
