@@ -7,7 +7,7 @@ from urllib.parse import unquote
 # -*- Config
 # Warning:Before start ,You should fill in these forms.
 # Course url (with key "tid")
-url = ''
+course_url = ''
 # Session
 httpSessionId = ''
 # cookies
@@ -20,7 +20,6 @@ headers = {
     'Content-Type': 'text/plain',
 }
 
-downloadDocs = True  # Download Docs "Immediately" (True or False)
 downloadSrt = True  # Download Chinese or English Srt (True or False)
 
 # -*- Api
@@ -34,7 +33,6 @@ for key, morsel in cookie.items():
 
 # getLessonUnitLearnVo (This funciton will return a dict with download info)
 def getLessonUnitLearnVo(contentId, id, contentType):
-    """ VERSION : 20170110 """
     # prepare data and post
     payload = {
         'callCount': 1,
@@ -51,8 +49,8 @@ def getLessonUnitLearnVo(contentId, id, contentType):
     }
     cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitLearnVo.dwr'
 
-    rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies).text
-    print(rdata)
+    rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies, timeout=None).text
+    # print(rdata)
     info = {}  # info.clear()
     # Sort data depend on it's contentType into dict info
     if contentType == 1:  # Video
@@ -101,29 +99,24 @@ def getLessonUnitLearnVo(contentId, id, contentType):
 # Structure lesson(This funciton will return a dict with lesson info)
 def sort_lesson(index):
     return dict(
-        # chapterId=re.search(r'.chapterId=(\d+);', index).group(1),
-        sid=int(re.search(r's(\d+)', index).group(1)),
         contentType=int(re.search(r'.contentType=(\d+);', index).group(1)),
         name=str(re.search(r'.name="(.+)";', index).group(1))
             .replace(r'\n', '')
             .encode('utf-8').decode('unicode_escape')
             .encode('gbk', 'ignore').decode('gbk', 'ignore')
-            .replace('/', '_'),
-        viewStatus=int(re.search(r'.viewStatus=(\d+)', index).group(1)),
+            .replace('/', '_').replace(':', '：').replace('"', ''),
         info=getLessonUnitLearnVo(re.search(r'.contentId=(\d+);', index).group(1),
                                   re.search(r'.id=(\d+);', index).group(1),
                                   int(re.search(r'.contentType=(\d+);', index).group(1))),
-        level='lesson'
     )
 
 
 # Download things
-def downloadCourseware(path, type, link, filename):
+def downloadCourseware(path, link, filename):
+    if not os.path.exists(path):
+        os.makedirs(path)
     r = requests.get(link)
-    new_path = path + "\\" + type
-    if not os.path.exists(new_path):
-        os.makedirs(new_path)
-    with open(new_path + "\\" + filename, "wb") as code:
+    with open(path + "\\" + filename, "wb") as code:
         code.write(r.content)
         print("Download \"" + filename + "\" OK!")
 
@@ -132,11 +125,22 @@ def downloadCourseware(path, type, link, filename):
 
 # -*- Main
 def main():
-    if re.search(r'tid', url):
-        print('Begin~')
+    # handle the course_url links to Get right courseId and termId
+    if not re.search(r'([A-Za-z]*-\d*)', course_url):
+        print("No course Id,Please check!")
+        return
+    else:
+        courseId = re.search(r'([A-Za-z]*-\d*)', course_url).group(1)
+        bs = BeautifulSoup(requests.get(url="http://www.icourse163.org/course/" + courseId + "#/info", timeout=None).text, "lxml")
+        course_info_raw = bs.find("script", text=re.compile(r"termDto")).string
+        if re.search(r'tid', course_url):
+            tid = re.search(r'tid=(\d+)', course_url).group(1)
+        else:
+            print("No termId which you want to download.Will Choose the Lastest term.")
+            tid = re.search(r"termId : \"(\d+)\"", course_info_raw).group(1)
 
-        bs = BeautifulSoup(requests.get(url=url.replace('learn', 'course')).text, "lxml")
-        # Get information about course'name ,school,teacher
+        print('Begin~')
+        # Generate Grab information
         course_name = re.search(r'(.+?)_(.+?)_(.+?)', bs.title.string).group(1)
         school_name = re.search(r'(.+?)_(.+?)_(.+?)', bs.title.string).group(2)
         teacher_name = []
@@ -146,15 +150,14 @@ def main():
                 teacher_name[2] += '等'
                 break
         teacher_name = '、'.join(teacher_name)
+        path = course_name + '-' + school_name + '-' + teacher_name
+        print("The Download INFO:\nCourse:" + path + "\nid: " + courseId + "\ntermID:" + tid)
 
         # Make course's dir
-        path = course_name + '-' + school_name + '-' + teacher_name
-        print("抓取的课程为" + path)
         if not os.path.exists(path):
             os.makedirs(path)
 
         # Get course's chapter
-        tid = re.search(r'tid=(\d+)', url).group(1)
         cont = [0, 0]  # count [video,docs]
         payload = {
             'callCount': 1,
@@ -167,8 +170,8 @@ def main():
             'batchId': random.randint(1000000000000, 20000000000000)
         }
         cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLastLearnedMocTermDto.dwr'
-        rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies).text
-        print(rdata)
+        rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies, timeout=None).text
+        # print(rdata)
         if re.search(r'var s\d+=\{\}', rdata):
             rdata = rdata.splitlines()  # str -> list
             # Data cleaning
@@ -181,7 +184,6 @@ def main():
                         bestvideo = lesson['info'].get('videoType')  # Choose download video Type
                         # Output video download link
                         dllink = lesson['info'].get(bestvideo[0])
-                        print(dllink)
                         open(path + "\\dllink.txt", "a").write(dllink + "\n")
                         # Output video rename command
                         dlfile = re.search(r'/(\d+?_.+?\.(mp4|flv))', dllink).group(1)
@@ -192,39 +194,36 @@ def main():
                         else:
                             new = "ren " + dlfile + " \"" + str(lesson.get('name')) + "_" + str(
                                 videotype.group(2)) + "." + str(videotype.group(1)) + "\"\n"
-                        print(new)
+                        print("Find Video\n" + str(lesson.get('name')) + " : "+ dllink)
                         open(path + "\\ren.bat", "a").write(new)
                         cont[0] += 1
                         # Subtitle
                         if downloadSrt:
                             if lesson['info'].get('ChsSrt'):
                                 print("Find Chinese Subtitle for this lesson,Begin download.")
-                                srtdlink = str(lesson['info'].get('ChsSrt'))
-                                chssrtname = str(lesson.get('name')) + '.chs.srt'
-                                downloadCourseware(path, "srt", srtdlink, chssrtname)
+                                downloadCourseware(path=path + "\\" + "srt",
+                                                   link=str(lesson['info'].get('ChsSrt')),
+                                                   filename=str(lesson.get('name')) + '.chs.srt')
 
                             if lesson['info'].get('EngSrt'):
                                 print("Find English Subtitle for this lesson,Begin download.")
-                                srtdlink = str(lesson['info'].get('EngSrt'))
-                                engsrtname = str(lesson.get('name')) + '.eng.srt'
-                                downloadCourseware(path, "srt", srtdlink, engsrtname)
+                                downloadCourseware(path=path + "\\" + "srt",
+                                                   link=str(lesson['info'].get('EngSrt')),
+                                                   filename=str(lesson.get('name')) + '.eng.srt')
 
                     if lessontype == 3:  # Documentation
                         wdlink = lesson['info'].get('textOrigUrl')
-                        print(wdlink)
-                        if downloadDocs:
-                            filename = unquote(re.search(r'&download=(.+)', wdlink).group(1)).replace("+", " ")
-                            downloadCourseware(path, "docs", wdlink, filename)
-                        else:
-                            open("docsdllink.txt", "a").write(wdlink + "\n")
+                        # print(wdlink)
+                        print("Find Document,Begin download.")
+                        downloadCourseware(path=path + "\\" + "docs",
+                                           link=wdlink,
+                                           filename=str(cont[1]) + " " + unquote(
+                                               re.search(r'&download=(.+)', wdlink).group(1)).replace("+", " "))
                         cont[1] += 1
             print("Found {0} Video(es),and {1} Text(s) on this page".format(cont[0], cont[1]))
         else:
             print("Error:" + re.search(r'message:(.+)\}\)', rdata).group(
                 1) + ",Please make sure you login by 163-email and your \"Session-Cookies\" pair is right.")
-    else:
-        print("Error:Please Check your course url.(Need kid)")
-
 
 if __name__ == '__main__':
     main()
