@@ -8,17 +8,8 @@ from urllib.parse import unquote
 # Warning:Before start ,You should fill in these forms.
 # Course url (with key "tid")
 course_url = ''
-# Session
-httpSessionId = ''
 # cookies
 raw_cookies = ''
-# Post Header(Don't change)
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36',
-    'Accept-Encoding': 'gzip, deflate',
-    'Accept-Language': 'zh-CN,zh;q=0.8',
-    'Content-Type': 'text/plain',
-}
 
 downloadSrt = True  # Download Chinese or English Srt (True or False)
 downloadVideoType = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl',
@@ -32,6 +23,16 @@ cookies = {}
 for key, morsel in cookie.items():
     cookies[key] = morsel.value
 
+# Get Session from cookies
+httpSessionId = cookies["NTESSTUDYSI"]
+
+# Post Header(Don't change)
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36',
+    'Accept-Encoding': 'gzip, deflate',
+    'Accept-Language': 'zh-CN,zh;q=0.8',
+    'Content-Type': 'text/plain',
+}
 
 # getLessonUnitLearnVo (This funciton will return a dict with download info)
 def getLessonUnitLearnVo(contentId, id, contentType):
@@ -111,7 +112,7 @@ def downloadCourseware(path, link, filename):
 # -*- End of Api
 
 # -*- Main
-def main():
+def main(course_url):
     # handle the course_url links to Get right courseId and termId
     if not re.search(r'([A-Za-z]*-\d*)', course_url):
         print("No course Id,Please check!")
@@ -181,7 +182,7 @@ def main():
                         else:
                             new = "ren " + dlfile + " \"" + str(lesson.get('name')) + "_" + str(
                                 videotype.group(2)) + "." + str(videotype.group(1)) + "\"\n"
-                        print("Find Video\n" + str(lesson.get('name')) + " : "+ dllink)
+                        print("Find Video\n" + str(lesson.get('name')) + " : " + dllink)
                         open(path + "\\ren.bat", "a").write(new)
                         cont[0] += 1
                         # Subtitle
@@ -213,4 +214,4 @@ def main():
                 1) + ",Please make sure you login by 163-email and your \"Session-Cookies\" pair is right.")
 
 if __name__ == '__main__':
-    main()
+    main(course_url)

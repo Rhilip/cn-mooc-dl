@@ -15,15 +15,13 @@ python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests beaut
 * Click in the course you want to download.and Open The 'Developer Tools'(In chrome,F12),turn to Network panel.Open Filter and choose "XHR".
 For example，
 ![Announce box](./pic/QQ截图20170105132604.jpg)
-* Then turn to content menu.You will find a file named "CourseBean.getLastLearnedMocTermDto.dwr" luckly (though other dwr is OK). In it's Header,We will find the information:Cookies and Session.We need that!!
+* Then turn to content menu.You will find a file named "CourseBean.getLastLearnedMocTermDto.dwr" luckly (though other dwr is OK). In it's Header,We will find the information:Cookies ~~and Session~~(Get from cookies).We need that!!
 ![Find Cookie and Session](./pic/QQ截图20170105134052.jpg)
 * Open the file "icourse163-dl.py",and fill in the forms at Config part.
 ```
 # Warning:Before start ,You should fill in these forms.
 # Course url (with key "tid")
 url = ''
-# Session
-httpSessionId = ''
 # cookies
 raw_cookies = ''
 ```
