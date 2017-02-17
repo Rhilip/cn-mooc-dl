@@ -1,51 +1,33 @@
-# icourse163-dl
-Script for downloading download MOOCs (include Video,Subtitle and Text...) in icourse163.org.
-## Instructions
-### 1) Prepare Python3 and model
-* Download Python3 from it's website:[Python3](https://www.python.org/downloads/),and install it into PATH.
-* Install model [Request](http://docs.python-requests.org/zh_CN/latest/user/install.html#install) and [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/bs4/doc/index.zh.html#id5),You can use this command:
+# cn-mooc-dl
+Since most Scripts in [renever/cn_mooc_dl](https://github.com/renever/cn_mooc_dl) and it's networks are not able to work,
+I wrote another repository to download those MOOC Courses.
+
+## Remember
+* This repository isn't fork from [renever/cn_mooc_dl](https://github.com/renever/cn_mooc_dl).
+* I use cookies,but not account with password to entry the website.
+* I use Download tools to download main video,and a script(ren.bat) to rename.
+
+## How it work
+### 1) Prerequisites
+The following dependencies are required and must be installed separately.
+* [Python3](https://www.python.org/downloads/),and install it into PATH.
+* Model [Request](http://docs.python-requests.org/zh_CN/latest/user/install.html#install) and [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/bs4/doc/index.zh.html#id5),You can use this command:
 ```
 python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests beautifulsoup4
 ```
+* Also don't forget download this packet or one of this scripts ......
 
-* Also don't forget download this packet......
+### 2) Supported Sites
 
-### 2) Get key information from website and fill those to "icourse163-dl.py"
-* Open [icourse163.org](http://www.icourse163.org/home.htm),and login in with 163 email,NOT OAUTH.
-* Click in the course you want to download.and Open The 'Developer Tools'(In chrome,F12),turn to Network panel.Open Filter and choose "XHR".
-For example，
-![Announce box](./pic/QQ截图20170105132604.jpg)
-* Then turn to content menu.You will find a file named "CourseBean.getLastLearnedMocTermDto.dwr" luckly (though other dwr is OK). In it's Header,We will find the information:Cookies ~~and Session~~(Get from cookies).We need that!!
-![Find Cookie and Session](./pic/QQ截图20170105134052.jpg)
-* Open the file "icourse163-dl.py",and fill in the forms at Config part.
-```
-# Warning:Before start ,You should fill in these forms.
-# Course url (with key "tid")
-url = ''
-# cookies
-raw_cookies = ''
-```
-```
-downloadSrt = True  # Download Chinese or English Srt (True or False)
-```
-* Remember a "Session-Cookies" pair can be used for a long time until the service reply message:"not_auth" or "Session Error" ,Then you should change it into a new one.But in it's survival time,you can get another course only to change course url.(Even the course you didn't participate in,Just need the right key "tid")
+| File | Site | URL | Videos?  | Documents? | Subtitle?|
+|:-------------:|:------------------:|:---:|:---:|:---:|:---:|
+| icourse163-dl.py | 中国大学MOOC | <http://www.icourse163.org/> | ✓ | ✓ | ✓ |
 
-### 3) Run this script
-* just run it and you will get some file.
-```
-dllink.txt : the video download link
-ren.bat : Rename script for downloaded video.Before use,edit it so make videoes easier to organize
-some PDF or SRT(if exists and "downloadSrt = True")
-```
-* Use Download tools (,for example IDM...) to download course video.
-* Use "ren.bat" to rename the downloaded video.
-* Sort those videos and documents logically
+### 3) Instruction manual
+See [Wiki](/Rhilip/cn-mooc-dl/wiki) please.
 
 ## Test Environment
 * Python :`v3.5.2`
 * OS : `Windows 10` and `Chrome 55`
-* IDE : `PyCharm 2016.3.1`
+* IDE : `IntelliJ IDEA 2016.3.4`
 * Download tools :`IDM`
-
-## Met Problem
-* Issues Please~

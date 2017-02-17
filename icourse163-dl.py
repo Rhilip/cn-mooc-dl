@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-import requests, random, re, os
-from bs4 import BeautifulSoup
 from http.cookies import SimpleCookie
 from urllib.parse import unquote
+
+import os
+import random
+import re
+import requests
+from bs4 import BeautifulSoup
 
 # -*- Config
 # Warning:Before start ,You should fill in these forms.
