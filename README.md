@@ -3,9 +3,9 @@ Since most Scripts in [renever/cn_mooc_dl](https://github.com/renever/cn_mooc_dl
 I wrote another repository to download those MOOC Courses.
 
 ## Remember
-* This repository isn't fork from [renever/cn_mooc_dl](https://github.com/renever/cn_mooc_dl).
+* This repository isn't forked from [renever/cn_mooc_dl](https://github.com/renever/cn_mooc_dl).
 * I use cookies,but not account with password to entry the website.
-* I use Download tools to download main video,and a script(ren.bat) to rename.
+* I use Download tools to download main video,and a script(ren.bat) to rename it.
 
 ## How it work
 ### 1) Prerequisites
