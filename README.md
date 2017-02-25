@@ -24,10 +24,13 @@ python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests beaut
 | icourse163-dl.py | 中国大学MOOC | <http://www.icourse163.org/> | ✓ | ✓ | ✓ |
 
 ### 3) Instruction manual
-See [Wiki](/Rhilip/cn-mooc-dl/wiki) please.
+See [Wiki](wiki) please.
 
 ## Test Environment
 * Python :`v3.5.2`
 * OS : `Windows 10` and `Chrome 55`
 * IDE : `IntelliJ IDEA 2016.3.4`
 * Download tools :`IDM`
+
+## Met Problem
+* Issues Please~
