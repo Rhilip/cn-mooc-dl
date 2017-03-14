@@ -103,11 +103,11 @@ def main(course_url):
                                 if re.search("a href=\"(.+/download)\"", seq.text):
                                     srt_dllink = "http://www.xuetangx.com{0}".format(
                                         re.search("a href=\"(.+/download)\"", seq.text).group(1))
-                                    # print(week_name, lesson_name, dllink, srt_dllink)
-                                    print("{2} \"{0} {1}.mp4\"".format(week_name, lesson_name, dllink))
-                                    download_file_name = f"{course_path}/{week_name}/{lesson_name}.mp4"
-                                    # downloadCourseware(path, srt_dllink, seq_name)
-                                    utils.resume_download_file(session=s, filename=download_file_name, url=dllink)
+                                # print(week_name, lesson_name, dllink, srt_dllink)
+                                print("{2} \"{0} {1}.mp4\"".format(week_name, lesson_name, dllink))
+                                download_file_name = f"{course_path}/{week_name}/{lesson_name}.mp4"
+                                # downloadCourseware(path, srt_dllink, seq_name)
+                                utils.resume_download_file(session=s, filename=download_file_name, url=dllink)
             else:  # 未登陆成功或者没参加该课程
                 print("Something Error,You may not Join this course or Enter the wrong password.")
                 return
