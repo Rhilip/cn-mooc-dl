@@ -2,44 +2,28 @@
 import os
 import random
 import re
-from http.cookies import SimpleCookie
+import configparser
 from urllib.parse import unquote
 
-import requests
+import model
 
-from model import utils
-from model import sortinfo
-
-# -*- Config
-# Warning:Before start ,You should fill in these forms.
 # Course url (with key "tid")
-course_url = ''
-# cookies
-raw_cookies = ''
+course_url = ""
 
-downloadSrt = True  # Download Chinese or English Srt (True or False)
+# Loading config
+config = configparser.ConfigParser()
+config.read("settings.conf", encoding="utf-8-sig")
+
+# Download_Setting
+Download_Docs = config["icourse163"]["Download_Docs"]
+Download_Srt = config["icourse163"]["Download_Srt"]
+Download_Path = config["icourse163"]["Download_Path"]
 downloadVideoType = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl',
                      'flvShdUrl', 'flvHdUrl', 'flvSdUrl']  # Choose first video download link(if exists)
-download_path = ""
 
-# -*- Api
-# Arrange Cookies from raw
-cookie = SimpleCookie()
-cookie.load(raw_cookies)
-cookies = {}
-for key, morsel in cookie.items():
-    cookies[key] = morsel.value
-
-# Get Session from cookies
-httpSessionId = cookies["NTESSTUDYSI"]
-
-# Post Header(Don't change)
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36',
-    'Accept-Encoding': 'gzip, deflate',
-    'Accept-Language': 'zh-CN,zh;q=0.8',
-    'Content-Type': 'text/plain',
-}
+# Session
+session = model.login_session(site="icourse163", conf=config)
+httpSessionId = session.cookies["NTESSTUDYSI"]
 
 
 # getLessonUnitLearnVo (This funciton will return a dict with download info)
@@ -60,7 +44,7 @@ def getLessonUnitLearnVo(contentId, id, contentType):
     }
     cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitLearnVo.dwr'
 
-    rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies, timeout=None).text
+    rdata = session.post(cs_url, data=payload, timeout=None).text
     # print(rdata)
     info = {}  # info.clear()
     # Sort data depend on it's contentType into dict info
@@ -100,7 +84,7 @@ class SortedLesson:
 
     def load(self, index):
         self.contentType = int(re.search(r'.contentType=(\d+);', index).group(1))
-        self.name = utils.clean_filename(str(re.search(r'.name="(.+)";', index).group(1)).encode('utf-8').decode(
+        self.name = model.clean_filename(str(re.search(r'.name="(.+)";', index).group(1)).encode('utf-8').decode(
             'unicode_escape').encode('gbk', 'ignore').decode('gbk', 'ignore'))
         self.info = getLessonUnitLearnVo(re.search(r'.contentId=(\d+);', index).group(1),
                                          re.search(r'.id=(\d+);', index).group(1),
@@ -112,7 +96,7 @@ class SortedLesson:
 def downloadCourseware(path, link, filename):
     if not os.path.exists(path):
         os.makedirs(path)
-    r = requests.get(link)
+    r = session.get(link)
     with open(path + "\\" + filename, "wb") as code:
         code.write(r.content)
         print("Download \"" + filename + "\" OK!")
@@ -127,8 +111,8 @@ def main(course_url):
         print("No course Id,Please check!")
         return
     else:
-        info = sortinfo.out_info(info_page_url=course_url, download_path=download_path)
-        course_path = f"{download_path}\\{info.path}"
+        info = model.out_info(info_page_url=course_url, download_path=Download_Path)
+        course_path = f"{Download_Path}\\{info.path}"
 
         # Get course's chapter
         cont = [0, 0]  # count [video,docs]
@@ -143,7 +127,7 @@ def main(course_url):
             'batchId': random.randint(1000000000000, 20000000000000)
         }
         cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLastLearnedMocTermDto.dwr'
-        rdata = requests.post(cs_url, data=payload, headers=headers, cookies=cookies, timeout=None).text
+        rdata = session.post(cs_url, data=payload, timeout=None).text
         # print(rdata)
         if re.search(r'var s\d+=\{\}', rdata):
             rdata = rdata.splitlines()  # str -> list
@@ -171,7 +155,7 @@ def main(course_url):
                         open(course_path + "\\ren.bat", "a").write(new)
                         cont[0] += 1
                         # Subtitle
-                        if downloadSrt:
+                        if Download_Srt:
                             if lesson.info.get('ChsSrt'):
                                 print("Find Chinese Subtitle for this lesson,Begin download.")
                                 downloadCourseware(path=course_path + "\\" + "srt",

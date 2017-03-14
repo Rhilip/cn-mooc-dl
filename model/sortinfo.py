@@ -1,17 +1,20 @@
-import os
 import re
 import requests
 import time
 from bs4 import BeautifulSoup
 import locale
 
+locale.setlocale(locale.LC_CTYPE, 'chinese')
+
+# Session
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36',
     'Accept-Encoding': 'gzip, deflate',
     'Accept-Language': 'zh-CN,zh;q=0.8',
     'Content-Type': 'text/plain',
 }
-locale.setlocale(locale.LC_CTYPE, 'chinese')
+s = requests.Session()
+s.headers.update(headers)
 
 
 class ReturnInfo:
@@ -43,8 +46,7 @@ def sort_teacher(teacher_list):
 
 def xuetanx_info(info=ReturnInfo(), url=""):
     course_id = re.search(r"courses/(?P<id>[\w:+-]+)/?", url).group("id")
-    s = requests.Session()
-    page_about = s.get(url=f"http://www.xuetangx.com/courses/{course_id}/about", headers=headers)
+    page_about = s.get(url=f"http://www.xuetangx.com/courses/{course_id}/about")
     if page_about.text.find("页面无法找到") == -1:  # 存在该课程
         page_about_bs = BeautifulSoup(page_about.text, "html5lib")
         # 获取课程信息
@@ -79,8 +81,6 @@ def icourse163_info(info=ReturnInfo(), url=""):
             # 否则通过info页面重新获取最新tid
             print("No termId which you want to download.Will Choose the Lastest term.")
             info_url = f"http://www.icourse163.org/course/{course_seacrh.group('cid')}#/info"  # 使用课程默认地址
-        s = requests.Session()
-        s.get(url=info_url)
         page_about = s.get(url=info_url)
         if page_about.url == page_about.request.url:  # 存在该课程
             # 当课程不存在的时候会302重定向到http://www.icourse163.org/，通过检查返回、请求地址是否一致判断
@@ -126,7 +126,7 @@ def icourse163_info(info=ReturnInfo(), url=""):
                 'batchId': 1489407453123
             }
             resp = s.post(url="http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitPreviewVo.dwr",
-                          headers=headers, data=payload).text
+                          data=payload).text
             downloadVideoType = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl', 'flvShdUrl', 'flvHdUrl', 'flvSdUrl']
             video_link_list = []  # Get Video download type
             for k in downloadVideoType:
@@ -142,6 +142,7 @@ def icourse163_info(info=ReturnInfo(), url=""):
 
 
 def make_intro_file(info, path):
+    import os
     if not os.path.exists(path):
         os.makedirs(path)
     if not os.path.exists(f"{path}\\课程介绍及抓取说明.txt"):
@@ -161,7 +162,7 @@ def make_intro_file(info, path):
         intro.write(f"{info.introduction}\n")
 
 
-def out_info(info_page_url="", download_path=""):
+def out_info(info_page_url="", download_path=None):
     # 生成配置信息
     info = ReturnInfo()  # 默认情况
     print("Loading Course's info")
