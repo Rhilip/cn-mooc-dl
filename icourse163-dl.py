@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
-import os
 import random
 import re
 import configparser
+import requests
 from urllib.parse import unquote
 
 import model
 
-# Course url (with key "tid")
-course_url = ""
+course_url = ''
 
 # Loading config
 config = configparser.ConfigParser()
@@ -22,7 +21,7 @@ downloadVideoType = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl',
                      'flvShdUrl', 'flvHdUrl', 'flvSdUrl']  # Choose first video download link(if exists)
 
 # Session
-session = model.login_session(site="icourse163", conf=config)
+session = model.login(site="icourse163", conf=config)
 httpSessionId = session.cookies["NTESSTUDYSI"]
 
 
@@ -93,10 +92,10 @@ class SortedLesson:
 
 
 # Download things
+# TODO 使用model.download替换该方法
 def downloadCourseware(path, link, filename):
-    if not os.path.exists(path):
-        os.makedirs(path)
-    r = session.get(link)
+    model.mkdir_p(path)
+    r = requests.get(link)
     with open(path + "\\" + filename, "wb") as code:
         code.write(r.content)
         print("Download \"" + filename + "\" OK!")
@@ -112,7 +111,7 @@ def main(course_url):
         return
     else:
         info = model.out_info(info_page_url=course_url, download_path=Download_Path)
-        course_path = f"{Download_Path}\\{info.path}"
+        course_path = f"{Download_Path}\\{info.folder}"
 
         # Get course's chapter
         cont = [0, 0]  # count [video,docs]
@@ -145,6 +144,7 @@ def main(course_url):
                         # Output video rename command
                         dlfile = re.search(r'/(\d+?_.+?\.(mp4|flv))', dllink).group(1)
                         videotype = re.search(r'^(flv|mp4)(Sd|Hd|Shd)Url', str(bestvideo[0]))
+
                         if str(videotype.group(2)) == "Shd":
                             new = "ren " + dlfile + " \"" + str(lesson.name) + "." + str(
                                 videotype.group(1)) + "\"\n"

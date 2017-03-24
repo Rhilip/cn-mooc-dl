@@ -13,7 +13,7 @@ The following dependencies are required and must be installed separately.
 * [Python3](https://www.python.org/downloads/),and install it into PATH.
 * Model [Request](http://docs.python-requests.org/zh_CN/latest/user/install.html#install) and [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/bs4/doc/index.zh.html#id5),You can use this command:
 ```
-python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests beautifulsoup4 html5lib
+python -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests beautifulsoup4 html5lib progressbar2
 ```
 * Also don't forget download this packet or one of this scripts ......
 
