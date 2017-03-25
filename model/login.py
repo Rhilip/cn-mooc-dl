@@ -6,7 +6,7 @@ import requests
 from http.cookies import SimpleCookie
 
 
-def raw_cookies_to_jar(raw: str) -> dict:
+def cookies_raw2jar(raw: str) -> dict:
     """
     Arrange Cookies from raw using SimpleCookies
     """
@@ -30,7 +30,7 @@ def login_session(site="DEFAULT", conf=None) -> requests.session():
     if site == "icourse163":
         # 返回整理好的cookies
         if conf[site]["login_method"] == "Cookies":
-            cookies = raw_cookies_to_jar(conf["icourse163"]["cookies"])
+            cookies = cookies_raw2jar(conf["icourse163"]["cookies"])
             login_session.cookies.update(cookies)
         elif conf[site]["login_method"] == "Account":
             raise IndexError("Not allow")
