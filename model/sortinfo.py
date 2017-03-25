@@ -2,6 +2,7 @@
 import re
 import os
 import time
+import json
 
 import requests
 from bs4 import BeautifulSoup
@@ -17,7 +18,7 @@ session = requests.Session()
 session.headers.update(headers)
 
 
-class ReturnInfo:
+class CourseInfo:
     # Url
     url = None
     id = None
@@ -48,7 +49,7 @@ def sort_teacher(teacher_list):
     return '、'.join(teacher_name)
 
 
-def xuetanx_info(info=ReturnInfo(), url=""):
+def xuetanx_info(info=CourseInfo(), url=""):
     course_id = re.search(r"courses/(?P<id>[\w:+-]+)/?", url).group("id")
     page_about = session.get(url=f"http://www.xuetangx.com/courses/{course_id}/about")
     if page_about.text.find("页面无法找到") == -1:  # 存在该课程
@@ -62,16 +63,15 @@ def xuetanx_info(info=ReturnInfo(), url=""):
         info.title = course_name_tag.get_text()
         info.school = course_name_tag.find_next("a").get_text()
         info.teacher = sort_teacher(page_about_bs.find("ul", class_="teacher_info").find_all("span", class_="name"))
-        ReturnInfo.generate_folder(info)
+        CourseInfo.generate_folder(info)
 
-        info.img_link = f"http://www.xuetangx.com{courseabout_detail_bs.find('div',id='video')['data-poster']}"
-        # video_link = ""
         # spider_info （建议在抓取完后检查修改）
         info_div = page_about_bs.find("div", class_="course_info")
         course_type = None
         course_type_search = re.search(r"[(（](?P<type>(\d{,4}[春夏秋冬])|(自主模式).+?)[)）]", info.title)
         if course_type_search:
             course_type = course_type_search.group("type")
+        # TODO 请考虑这里使用split分割后在取前段合适还是直接使用字符串截取方便
         start_time = info_div["data-start"].split("+")[0]  # '2017-03-15 01:00:00+00:00' -> '2017-03-15 01:00:00'
         end_time = info_div["data-end"].split("+")[0]
         if course_type:
@@ -81,25 +81,37 @@ def xuetanx_info(info=ReturnInfo(), url=""):
         info.spider_info += "课程时间：\n开课：{start}\n结束：{end}\n\n".format(start=start_time, end=end_time) \
                             + "抓取内容：\n课程视频（MP4超清源）\n课程文档（PDF）\n字幕\n\n抓取补充说明：\n无"
         info.description = info_div.p.get_text()
-        info.introduction = page_about_bs.find("section", id="courseIntro").get_text().replace(" ", "")
+        # TODO 优化学堂在线的简介部分导出方法
+        info.introduction = page_about_bs.find("section", id="courseIntro").get_text().encode('gbk', 'ignore').decode('gbk','ignore')
+
+        info.img_link = f"http://www.xuetangx.com{courseabout_detail_bs.find('div',id='video')['data-poster']}"
+        # video_link
+        video_ccid = courseabout_detail_bs.find("div", id="video")["data-ccid"]
+        r = session.get(url=f"http://www.xuetangx.com/videoid2source/{video_ccid}")
+        r_json = json.loads(r.text)
+        if r_json["sources"]:
+            if r_json["sources"]["quality20"][0]:
+                info.video_link = r_json["sources"]["quality20"][0]
+            else:
+                info.video_link = r_json["sources"]["quality10"][0]
         return info
     else:
         raise FileNotFoundError("Not found this course in \"xuetangx.com\",Check Please")
 
 
-def icourse163_info(info=ReturnInfo(), url=""):
-    course_seacrh = re.search(r"(?:(learn)|(course))/(?P<id>(?P<cid>[\w:+-]+)(\?tid=(?P<tid>\d+))?)#?/?", url)
-    if course_seacrh:
+def icourse163_info(info=CourseInfo(), url=""):
+    cid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<cid>[\w:+-]+)(\?tid=(?P<tid>\d+))?)#?/?", url)
+    if cid:
         tid_flag = False
-        if course_seacrh.group("tid"):
+        if cid.group("tid"):
             # 当使用者提供tid的时候默认使用使用者tid
-            info.id = course_seacrh.group("tid")
-            info_url = f"http://www.icourse163.org/course/{course_seacrh.group('id')}#/info"
+            info.id = cid.group("tid")
+            info_url = f"http://www.icourse163.org/course/{cid.group('id')}#/info"
             tid_flag = True
         else:
             # 否则通过info页面重新获取最新tid
             print("No termId which you want to download.Will Choose the Lastest term.")
-            info_url = f"http://www.icourse163.org/course/{course_seacrh.group('cid')}#/info"  # 使用课程默认地址
+            info_url = f"http://www.icourse163.org/course/{cid.group('cid')}#/info"  # 使用课程默认地址
         page_about = session.get(url=info_url)
         if page_about.url == page_about.request.url:  # 存在该课程
             # 当课程不存在的时候会302重定向到http://www.icourse163.org/，通过检查返回、请求地址是否一致判断
@@ -112,13 +124,14 @@ def icourse163_info(info=ReturnInfo(), url=""):
             info.title = re.search(r'(.+?)_(.+?)_(.+?)', bs.title.string).group(1)
             info.school = re.search(r'(.+?)_(.+?)_(.+?)', bs.title.string).group(2)
             info.teacher = sort_teacher(bs.find_all('h3', class_="f-fc3"))
-            ReturnInfo.generate_folder(info)
+            CourseInfo.generate_folder(info)
 
             info.description = re.search(r"spContent=(.+)", bs.find("p", id="j-rectxt").string).group(1)
 
             # spider_info （建议在抓取完后检查修改）
             start_time = time.gmtime(int(re.search(r"startTime : \"(\d+)\"", course_info_raw).group(1)) / 1000)
             end_time = time.gmtime(int(re.search(r"endTime : \"(\d+)\"", course_info_raw).group(1)) / 1000)
+            # TODO 请检查这里关于开课次数有没有更好的抓取方法
             term_info_list = re.search(r"window.termInfoList = \[(?P<termInfoList>.+?)\]", course_info_raw, re.M).group(
                 "termInfoList")
             id_list = re.findall(r"id : \"(\d+)\"", term_info_list)
@@ -128,6 +141,7 @@ def icourse163_info(info=ReturnInfo(), url=""):
                                + "开课：{0}\n".format(time.strftime("%Y-%m-%d %H:%M:%S", start_time)) \
                                + "结束：{0}\n\n".format(time.strftime("%Y-%m-%d %H:%M:%S", end_time)) \
                                + "抓取内容：\n课程视频（MP4超清源）\n课程文档（PDF）\n字幕\n\n抓取补充说明：\n无"
+            # TODO 优化中国大学MOOC的简介部分导出方法
             info.introduction = bs.find("div", class_="m-infomation").get_text().encode('gbk', 'ignore').decode('gbk',
                                                                                                                 'ignore')
             info.img_link = bs.find("div", id="j-courseImg").img["src"]
@@ -146,9 +160,9 @@ def icourse163_info(info=ReturnInfo(), url=""):
             }
             ask_video_url = "http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitPreviewVo.dwr"
             resp = session.post(url=ask_video_url, data=payload).text
-            downloadVideoType = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl', 'flvShdUrl', 'flvHdUrl', 'flvSdUrl']
+            download_video_type = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl', 'flvShdUrl', 'flvHdUrl', 'flvSdUrl']
             video_link_list = []  # Get Video download type
-            for k in downloadVideoType:
+            for k in download_video_type:
                 video_search_group = re.search(r's\d+.(?P<VideoType>' + str(k) + ')="(?P<dllink>.+?)";', resp)
                 if video_search_group:
                     dllink = video_search_group.group("dllink")
@@ -182,7 +196,7 @@ def make_intro_file(info, path):
 
 def out_info(info_page_url="", download_path=None):
     # 生成配置信息
-    info = ReturnInfo()  # 默认情况
+    info = CourseInfo()  # 默认情况
     print("Loading Course's info")
     if info_page_url.find("www.xuetangx.com") != -1:
         info = xuetanx_info(url=info_page_url)
