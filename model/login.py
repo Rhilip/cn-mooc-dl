@@ -29,19 +29,19 @@ def login_session(site="DEFAULT", conf=None) -> requests.session():
     # 各个站点的方法
     if site == "icourse163":
         # 返回整理好的cookies
-        if conf[site]["login_method"] == "Cookies":
-            cookies = cookies_raw2jar(conf["icourse163"]["cookies"])
+        if conf.login_method == "Cookies":
+            cookies = cookies_raw2jar(conf.cookies)
             login_session.cookies.update(cookies)
-        elif conf[site]["login_method"] == "Account":
+        elif conf.login_method == "Account":
             raise IndexError("Not allow")
     if site == "xuetangx":
-        if conf[site]["login_method"] == "Cookies":
+        if conf.login_method == "Cookies":
             raise IndexError("Not allow")
-        elif conf[site]["login_method"] == "Account":
+        elif conf.login_method == "Account":
             login_session.get("http://www.xuetangx.com/csrf_token")
             # csrftoken = session.cookies['csrftoken']
             login_session.post(url="http://www.xuetangx.com/v2/login_ajax", data={
-                "username": conf[site]["username"],
-                "password": conf[site]["password"]
+                "username": conf.username,
+                "password": conf.password
             })
     return login_session

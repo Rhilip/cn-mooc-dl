@@ -5,6 +5,7 @@ import errno
 from .download import *
 from .sortinfo import out_info
 from .login import login_session as login
+from .config import sort_config as config
 
 
 def clean_filename(string: str) -> str:
@@ -39,7 +40,6 @@ def mkdir_p(path, mode=0o777):
             pass
         else:
             raise
-
 
 def str2bool(v):
     return v.lower() in ("yes", "true", "t", "on", "1")
