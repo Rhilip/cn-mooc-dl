@@ -10,6 +10,8 @@ Diffident Point:
 """
 import os
 import time
+import re
+import errno
 
 import progressbar
 import requests
@@ -34,9 +36,44 @@ class DownloadQueue(Thread):
             self.queue.task_done()
 
 
+def clean_filename(string: str) -> str:
+    """
+    Sanitize a string to be used as a filename.
+
+    If minimal_change is set to true, then we only strip the bare minimum of
+    characters that are problematic for filesystems (namely, ':', '/' and
+    '\x00', '\n').
+    """
+
+    string = string.replace(':', '_') \
+        .replace('/', '_') \
+        .replace('\x00', '_')
+
+    string = re.sub('[\n\\\*><?\"|\t]', '', string)
+    string = re.sub(' +$', '', string)
+    string = re.sub('^ +', '', string)
+
+    return string
+
+
+def mkdir_p(path, mode=0o777):
+    """
+    Create subdirectory hierarchy given in the paths argument.
+    Ripped from https://github.com/coursera-dl/
+    """
+    try:
+        os.makedirs(path, mode)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
+
+
 def download_file(session: requests.Session(), url: str, file: str, resume=True, retry=4):
     # TODO 多进程下载
-    name = file.split("\\")[-1]
+    name = clean_filename(file.split("\\")[-1])
+    mkdir_p(file[:file.find(name)])
     if resume and os.path.exists(file):
         resume_len = os.path.getsize(file)
         file_mode = 'ab'
