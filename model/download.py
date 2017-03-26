@@ -72,8 +72,8 @@ def mkdir_p(path, mode=0o777):
 
 def download_file(session: requests.Session(), url: str, file: str, resume=True, retry=4):
     # TODO 多进程下载
-    name = clean_filename(file.split("\\")[-1])
-    mkdir_p(file[:file.find(name)])
+    file_name_out = file.split("\\")[-1]
+    mkdir_p(file[:file.find(file_name_out)])
     if resume and os.path.exists(file):
         resume_len = os.path.getsize(file)
         file_mode = 'ab'
@@ -90,7 +90,7 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
             if resume_len != 0:
                 # 将文件总长度并与本地文件对比
                 if total_length is None or resume_len == total_length:
-                    print('{0} is Already downloaded.'.format(name))
+                    print('{0} is Already downloaded.'.format(file_name_out))
                     break
 
             # 构造下载请求
@@ -107,11 +107,11 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
                 # 异常类型判断
                 if response.status_code == 416:  # 检查416（客户端请求字节范围无法满足） -> 禁止resume
                     # TODO 该步的必要性还值得讨论，直接禁止resume是否过于暴力
-                    print("local file:\"{0}\" may wrong,Stop resume.".format(name))
+                    print("local file:\"{0}\" may wrong,Stop resume.".format(file_name_out))
                     raise ValueError(error_msg)
                 if attempts_count < retry:
                     wait_interval = min(2 ** (attempts_count + 1), 60)  # Exponential concession，Max 60s
-                    print('Error to download \"{0}\", will retry in {1} seconds ...'.format(name, wait_interval))
+                    print('Error to download \"{0}\", will retry in {1} seconds ...'.format(file_name_out, wait_interval))
                     time.sleep(wait_interval)
                     attempts_count += 1
                     continue
@@ -121,7 +121,7 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
             # 写入工作流
             with open(file, file_mode) as f:
                 chunk_size = 4 * (1024 * 1024)
-                widgets = [name, " ", progressbar.Bar(marker=">", left="[", right="]"), " ",
+                widgets = [file_name_out, " ", progressbar.Bar(marker=">", left="[", right="]"), " ",
                            progressbar.Percentage(), " ", " ", progressbar.ETA(), " ", progressbar.FileTransferSpeed()]
                 pbar = progressbar.ProgressBar(widgets=widgets, maxval=total_length).start()
                 for chunk in response.iter_content(chunk_size=chunk_size):
