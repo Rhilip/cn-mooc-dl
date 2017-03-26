@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
 import re
-from queue import Queue
 from bs4 import BeautifulSoup
 
 import model
@@ -59,18 +58,24 @@ def main(course_url):
             # 获取章节信息
             for week in chapter:
                 week_name = week.h3.a.string.strip()
-                model.mkdir_p(f"{main_path}\\{week_name}")
                 for lesson in week.ul.find_all("a"):
                     # 获取课程信息
                     lesson_name = model.clean_filename(lesson.p.string)  # 主标题
                     lesson_bs = BeautifulSoup(session.get(url=f"http://www.xuetangx.com{lesson['href']}").text,
                                               "html5lib")
+
                     tab_list = {}
                     for tab in lesson_bs.find_all("a", role="tab"):
                         tab_list[tab.get('id')] = re.search("(.+)", tab.get('title')).group(1)
-                    for seq in lesson_bs.find_all('div', class_="seq_contents"):
+
+                    seq_contents = lesson_bs.find_all('div', class_="seq_contents")
+                    seq_contents_len = len(seq_contents)
+                    for i, seq in enumerate(seq_contents):
+                        seq_name = ""
+                        if seq_contents_len != 1:  # 如果只有一个的话，就不用建立子文件夹了
+                            seq_name = r"\{0} {1}".format(i, tab_list[seq.get("aria-labelledby")])
+
                         if re.search(r"data-type=[\'\"]Video[\'\"]", seq.text):  # 视频
-                            # seq_name = tab_list[seq.get("aria-labelledby")]
                             lesson_ccsource = re.search(r"data-ccsource=[\'\"](.+)[\'\"]", seq.text).group(1)
                             r = session.get(url=f"http://www.xuetangx.com/videoid2source/{lesson_ccsource}")
                             video = VideoInfo(resp_json=json.loads(r.text))
@@ -79,23 +84,19 @@ def main(course_url):
                                     video_link = video.hd
                                 else:
                                     video_link = video.sd
-                                video_file_name = f"{lesson_name}.mp4"
-                                video_file = f"{main_path}\\{week_name}\\{lesson_name}.mp4"
+                                video_file_name = f"{lesson_name}{seq_name}.mp4"
+                                video_file = f"{main_path}\\{week_name}\\{video_file_name}"
                                 print("视频: \"{name}\" {link}".format(name=video_file_name, link=video_link))
                                 download_list.append((video_link, video_file))
                                 seq_bs = BeautifulSoup(seq.text, "lxml")
                                 if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
-                                    model.mkdir_p(rf"{main_path}\srt")
-                                    model.mkdir_p(rf"{main_path}\srt\{week_name}")
                                     raw_link = seq_bs.find("a", text="下载字幕")["href"]
                                     srt_link = "http://www.xuetangx.com{0}".format(raw_link)
-                                    srt_file_name = f"{lesson_name}.srt"
+                                    srt_file_name = f"{lesson_name}{seq_name}.srt"
                                     srt_file = rf"{main_path}\srt\{week_name}\{srt_file_name}"
-                                    print("字幕: \"{name}\" {link}".format(name=srt_file_name,link=srt_link))
+                                    print("字幕: \"{name}\" {link}".format(name=srt_file_name, link=srt_link))
                                     download_list.append((srt_link, srt_file))
                                 if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
-                                    model.mkdir_p(rf"{main_path}\docs")
-                                    model.mkdir_p(rf"{main_path}\docs\{week_name}")
                                     raw_link = seq_bs.find("a", text="下载讲义")["href"]
                                     doc_link = "http://www.xuetangx.com{0}".format(raw_link)
                                     doc_file_name = doc_link.split("@")[-1]  # TODO 请多抓几门课程看这样是否可以，还是像srt一样处理的好
