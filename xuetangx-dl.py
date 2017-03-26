@@ -29,7 +29,7 @@ def main(course_url):
         course_id = re.search(r"courses/([\w:+-]+)/?", course_url).group(1)
         main_page = "http://www.xuetangx.com/courses/{course_id}".format(course_id=course_id)
         info = model.out_info(f"{main_page}/about", config.Download_Path)
-        main_path = f"{config.Download_Path}\\{info.folder}"
+        main_path = model.generate_path([config.Download_Path, info.folder])
 
         # 获取课程目录
         menu_raw = session.get(url="{0}/courseware".format(main_page))
@@ -44,14 +44,15 @@ def main(course_url):
 
             # info中提取的img_link,video_link
             if info.img_link:
-                img_suffix = info.img_link.split(".")[-1]
-                img_file = f"{main_path}\\课程封面图-{info.title}.{img_suffix}"
+                img_file_name = r"课程封面图-{title}.jpg".format(title=info.title)
+                img_file_path = model.generate_path([main_path, img_file_name])
                 print("课程封面图: {link}".format(link=info.img_link))
-                download_list.append((info.img_link, img_file))
+                download_list.append((info.img_link, img_file_path))
             if info.video_link:
-                video_file = f"{main_path}\\课程简介-{info.title}.mp4"
+                video_file_name = r"课程简介-{title}.mp4".format(title=info.title)
+                video_file_path = model.generate_path([main_path, video_file_name])
                 print("课程简介视频: {link}".format(link=info.video_link))
-                download_list.append((info.video_link, video_file))
+                download_list.append((info.video_link, video_file_path))
 
             menu_bs = BeautifulSoup(menu_raw.text, "html5lib")
             chapter = menu_bs.find_all("div", class_="chapter")
@@ -73,7 +74,8 @@ def main(course_url):
                     for i, seq in enumerate(seq_contents):
                         seq_name = ""
                         if seq_contents_len != 1:  # 如果只有一个的话，就不用建立子文件夹了
-                            seq_name = r"\{0} {1}".format(i, tab_list[seq.get("aria-labelledby")])
+                            seq_name_raw = model.clean_filename(tab_list[seq.get("aria-labelledby")])
+                            seq_name = r"{0} {1}".format(i, seq_name_raw)
 
                         if re.search(r"data-type=[\'\"]Video[\'\"]", seq.text):  # 视频
                             lesson_ccsource = re.search(r"data-ccsource=[\'\"](.+)[\'\"]", seq.text).group(1)
@@ -84,25 +86,25 @@ def main(course_url):
                                     video_link = video.hd
                                 else:
                                     video_link = video.sd
-                                video_file_name = f"{lesson_name}{seq_name}.mp4"
-                                video_file = f"{main_path}\\{week_name}\\{video_file_name}"
+                                video_file_name = model.generate_path([lesson_name, "{}.mp4".format(seq_name)])
+                                video_file_path = model.generate_path([main_path, week_name, video_file_name])
                                 print("视频: \"{name}\" {link}".format(name=video_file_name, link=video_link))
-                                download_list.append((video_link, video_file))
+                                download_list.append((video_link, video_file_path))
                                 seq_bs = BeautifulSoup(seq.text, "lxml")
                                 if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
                                     raw_link = seq_bs.find("a", text="下载字幕")["href"]
                                     srt_link = "http://www.xuetangx.com{0}".format(raw_link)
-                                    srt_file_name = f"{lesson_name}{seq_name}.srt"
-                                    srt_file = rf"{main_path}\srt\{week_name}\{srt_file_name}"
+                                    srt_file_name = model.generate_path([lesson_name, "{}.srt".format(seq_name)])
+                                    srt_file_path = model.generate_path([main_path, "srt", week_name, srt_file_name])
                                     print("字幕: \"{name}\" {link}".format(name=srt_file_name, link=srt_link))
-                                    download_list.append((srt_link, srt_file))
+                                    download_list.append((srt_link, srt_file_path))
                                 if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
                                     raw_link = seq_bs.find("a", text="下载讲义")["href"]
                                     doc_link = "http://www.xuetangx.com{0}".format(raw_link)
                                     doc_file_name = doc_link.split("@")[-1]  # TODO 请多抓几门课程看这样是否可以，还是像srt一样处理的好
-                                    doc_file = rf"{main_path}\docs\{week_name}\{doc_file_name}"
+                                    doc_file_path = model.generate_path([main_path, "docs", week_name, doc_file_name])
                                     print("文档: \"{name}\" {link}".format(name=doc_file_name, link=doc_link))
-                                    download_list.append((doc_link, doc_file))
+                                    download_list.append((doc_link, doc_file_path))
             if config.Download:
                 print("Begin Download~")
                 model.download_queue(session, download_list)  # 多线程下载

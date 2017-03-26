@@ -16,6 +16,7 @@ import errno
 import progressbar
 import requests
 
+from html import unescape
 from queue import Queue
 from threading import Thread
 
@@ -36,6 +37,13 @@ class DownloadQueue(Thread):
             self.queue.task_done()
 
 
+def generate_path(path_list: list) -> str:
+    return_path = ""
+    for path in path_list:
+        return_path = os.path.join(return_path, path)
+    return return_path
+
+
 def clean_filename(string: str) -> str:
     """
     Sanitize a string to be used as a filename.
@@ -44,14 +52,13 @@ def clean_filename(string: str) -> str:
     characters that are problematic for filesystems (namely, ':', '/' and
     '\x00', '\n').
     """
+    string = unescape(string)
+    string = re.sub(r'<(?P<tag>.+?)>(?P<in>.+?)<(/(?P=tag))>', "\g<in>", string)
 
-    string = string.replace(':', '_') \
-        .replace('/', '_') \
-        .replace('\x00', '_')
+    string = string.replace(':', '_').replace('/', '_').replace('\x00', '_')
 
     string = re.sub('[\n\\\*><?\"|\t]', '', string)
-    string = re.sub(' +$', '', string)
-    string = re.sub('^ +', '', string)
+    string = string.strip()
 
     return string
 
@@ -71,8 +78,7 @@ def mkdir_p(path, mode=0o777):
 
 
 def download_file(session: requests.Session(), url: str, file: str, resume=True, retry=4):
-    # TODO 多进程下载
-    file_name_out = file.split("\\")[-1]
+    file_name_out = os.path.split(file)[1]
     mkdir_p(file[:file.find(file_name_out)])
     if resume and os.path.exists(file):
         resume_len = os.path.getsize(file)
@@ -93,6 +99,7 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
                     print('{0} is Already downloaded.'.format(file_name_out))
                     break
 
+            # TODO 多线程下载
             # 构造下载请求
             session.headers['Range'] = 'bytes={:d}-'.format(resume_len)
             response = session.get(url, stream=True)
@@ -108,10 +115,10 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
                 if response.status_code == 416:  # 检查416（客户端请求字节范围无法满足） -> 禁止resume
                     # TODO 该步的必要性还值得讨论，直接禁止resume是否过于暴力
                     print("local file:\"{0}\" may wrong,Stop resume.".format(file_name_out))
-                    raise ValueError(error_msg)
+                    raise FileExistsError(error_msg)
                 if attempts_count < retry:
                     wait_interval = min(2 ** (attempts_count + 1), 60)  # Exponential concession，Max 60s
-                    print('Error to download \"{0}\", will retry in {1} seconds ...'.format(file_name_out, wait_interval))
+                    print('Error to download \"{0}\", will retry in {1}s.'.format(file_name_out, wait_interval))
                     time.sleep(wait_interval)
                     attempts_count += 1
                     continue
@@ -131,11 +138,9 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
                 pbar.finish()
 
             break
-    except ValueError:
+    except FileExistsError:
         download_file(session, url, file, resume=False)
-    except ConnectionError as err:
-        print(err.args)
-        download_file(session, url, file)
+
     return
 
 
