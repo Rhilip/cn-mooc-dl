@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+"""
+This module help you to load config from settings.conf
+by Rhilip , v20170324
+"""
 import configparser
 
 
@@ -17,12 +21,14 @@ class Config:
             self.password = setting["password"]
 
         # Download Setting
+        self.Download = str2bool(setting["Download"])
+        self.Download_Queue_Length = int(setting["Download_Queue_Length"])
         self.Download_Path = setting["Download_Path"]
         self.Download_Docs = str2bool(setting["Download_Docs"])
         self.Download_Srt = str2bool(setting["Download_Srt"])
 
 
-def sort_config(config_file, site):
+def load_config(config_file, site):
     config = configparser.ConfigParser()
     config.read(config_file, encoding="utf-8-sig")
     return Config(config[site])

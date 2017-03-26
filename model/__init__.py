@@ -5,7 +5,7 @@ import errno
 from .download import *
 from .sortinfo import out_info
 from .login import login_session as login
-from .config import sort_config as config
+from .config import load_config as config
 
 
 def clean_filename(string: str) -> str:
