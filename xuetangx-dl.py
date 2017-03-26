@@ -28,7 +28,7 @@ def main(course_url):
         return
     else:
         course_id = re.search(r"courses/([\w:+-]+)/?", course_url).group(1)
-        main_page = f"http://www.xuetangx.com/courses/{course_id}"
+        main_page = "http://www.xuetangx.com/courses/{course_id}".format(course_id=course_id)
         info = model.out_info(f"{main_page}/about", config.Download_Path)
         main_path = f"{config.Download_Path}\\{info.folder}"
 
@@ -79,38 +79,35 @@ def main(course_url):
                                     video_link = video.hd
                                 else:
                                     video_link = video.sd
-                                video_file_name = f"{main_path}\\{week_name}\\{lesson_name}.mp4"
-                                print("视频: \"{name}\" {link}".format(name=video_file_name.split("\\")[-1],
-                                                                     link=video_link))
-                                download_list.append((video_link, video_file_name))
+                                video_file_name = f"{lesson_name}.mp4"
+                                video_file = f"{main_path}\\{week_name}\\{lesson_name}.mp4"
+                                print("视频: \"{name}\" {link}".format(name=video_file_name, link=video_link))
+                                download_list.append((video_link, video_file))
                                 seq_bs = BeautifulSoup(seq.text, "lxml")
                                 if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
+                                    model.mkdir_p(rf"{main_path}\srt")
+                                    model.mkdir_p(rf"{main_path}\srt\{week_name}")
                                     raw_link = seq_bs.find("a", text="下载字幕")["href"]
                                     srt_link = "http://www.xuetangx.com{0}".format(raw_link)
-                                    srt_file_name = f"{main_path}\\{week_name}\\{lesson_name}.srt"
-                                    print("字幕: \"{name}\" {link}".format(name=srt_file_name.split("\\")[-1],
-                                                                         link=srt_link))
-                                    download_list.append((srt_link, srt_file_name))
+                                    srt_file_name = f"{lesson_name}.srt"
+                                    srt_file = rf"{main_path}\srt\{week_name}\{srt_file_name}"
+                                    print("字幕: \"{name}\" {link}".format(name=srt_file_name,link=srt_link))
+                                    download_list.append((srt_link, srt_file))
                                 if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
+                                    model.mkdir_p(rf"{main_path}\docs")
+                                    model.mkdir_p(rf"{main_path}\docs\{week_name}")
                                     raw_link = seq_bs.find("a", text="下载讲义")["href"]
                                     doc_link = "http://www.xuetangx.com{0}".format(raw_link)
-                                    doc_file_name = f"{main_path}\\{week_name}\\{lesson_name}.pdf"
-                                    print("文档: \"{name}\" {link}".format(name=doc_file_name.split("\\")[-1],
-                                                                         link=doc_link))
-                                    download_list.append((doc_link, doc_file_name))
-
-            # 多线程下载
-            print("Begin Download~")
-            queue = Queue()
-            for x in range(8):
-                worker = model.DownloadQueue(queue)
-                worker.daemon = True
-                worker.start()
-            for link_tuple in download_list:
-                link, file_name = link_tuple
-                queue.put((session, link, file_name))
-            queue.join()
-
+                                    doc_file_name = doc_link.split("@")[-1]  # TODO 请多抓几门课程看这样是否可以，还是像srt一样处理的好
+                                    doc_file = rf"{main_path}\docs\{week_name}\{doc_file_name}"
+                                    print("文档: \"{name}\" {link}".format(name=doc_file_name, link=doc_link))
+                                    download_list.append((doc_link, doc_file))
+            if config.Download:
+                print("Begin Download~")
+                model.download_queue(session, download_list)  # 多线程下载
+            else:
+                # TODO 这里是不使用model.download时候的输出方法
+                pass
         else:  # 未登陆成功或者没参加该课程
             print("Something Error,You may not Join this course or Enter the wrong password.")
             return

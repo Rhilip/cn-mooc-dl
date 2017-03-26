@@ -14,11 +14,11 @@ import time
 import progressbar
 import requests
 
+from queue import Queue
 from threading import Thread
 
 
 class DownloadQueue(Thread):
-    from queue import Queue
     queue = Queue()
 
     def __init__(self, queue):
@@ -35,6 +35,7 @@ class DownloadQueue(Thread):
 
 
 def download_file(session: requests.Session(), url: str, file: str, resume=True, retry=4):
+    # TODO 多进程下载
     name = file.split("\\")[-1]
     if resume and os.path.exists(file):
         resume_len = os.path.getsize(file)
@@ -56,7 +57,7 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
                     break
 
             # 构造下载请求
-            session.headers['Range'] = 'bytes=%d-' % resume_len
+            session.headers['Range'] = 'bytes={:d}-'.format(resume_len)
             response = session.get(url, stream=True)
 
             # 响应流异常处理
@@ -91,6 +92,24 @@ def download_file(session: requests.Session(), url: str, file: str, resume=True,
                         f.write(chunk)
                         pbar.update(os.path.getsize(file))
                 pbar.finish()
-                break
+
+            break
     except ValueError:
         download_file(session, url, file, resume=False)
+    except ConnectionError as err:
+        print(err.args)
+        download_file(session, url, file)
+    return
+
+
+def download_queue(session, download_list, queue_length=8):  # 多线程下载模块
+    queue = Queue()
+    for x in range(queue_length):
+        worker = DownloadQueue(queue)
+        worker.daemon = True
+        worker.start()
+    for link_tuple in download_list:
+        link, file_name = link_tuple
+        queue.put((session, link, file_name))
+    queue.join()
+    print("The download task completed.")
