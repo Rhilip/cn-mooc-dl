@@ -40,6 +40,3 @@ def mkdir_p(path, mode=0o777):
             pass
         else:
             raise
-
-def str2bool(v):
-    return v.lower() in ("yes", "true", "t", "on", "1")
