@@ -2,7 +2,10 @@
 Since most Scripts in [renever/cn_mooc_dl](https://github.com/renever/cn_mooc_dl) and it's networks are not able to work,
 I wrote another repository to download those MOOC Courses (**But there still some code from it,Thanks**).
 
-![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-74%25-red.svg) ![](https://img.shields.io/github/license/Rhilip/cn-mooc-dl.svg)
+![](https://img.shields.io/badge/build-passing-brightgreen.svg)
+![](https://img.shields.io/badge/coverage-74%25-red.svg)
+![](https://img.shields.io/badge/Wiki-Out_Of_Date-red.svg)
+![](https://img.shields.io/github/license/Rhilip/cn-mooc-dl.svg)
 
 ## How it work
 ### 1) Prerequisites
