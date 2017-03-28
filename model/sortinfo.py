@@ -49,14 +49,13 @@ def sort_teacher(teacher_list):
     return '、'.join(teacher_name)
 
 
-def xuetanx_info(info=CourseInfo(), url=""):
-    course_id = re.search(r"courses/(?P<id>[\w:+-]+)/?", url).group("id")
-    page_about = session.get(url=f"http://www.xuetangx.com/courses/{course_id}/about")
+def xuetanx_info(cid, info=CourseInfo()):
+    page_about = session.get(url=f"http://www.xuetangx.com/courses/{cid}/about")
     if page_about.text.find("页面无法找到") == -1:  # 存在该课程
-        page_about_bs = BeautifulSoup(page_about.text, "html5lib")
+        page_about_bs = BeautifulSoup(page_about.text, "lxml")
         # 获取课程信息
-        info.id = course_id
-        info.url = f"http://www.xuetangx.com/courses/{course_id}/about"
+        info.id = cid
+        info.url = f"http://www.xuetangx.com/courses/{cid}/about"
         courseabout_detail_bs = page_about_bs.find("section", class_="courseabout_detail")
         course_name_tag = courseabout_detail_bs.find("h3", class_="courseabout_title")
 
@@ -82,40 +81,45 @@ def xuetanx_info(info=CourseInfo(), url=""):
                             + "抓取内容：\n课程视频（MP4超清源）\n课程文档（PDF）\n字幕\n\n抓取补充说明：\n无"
         info.description = info_div.p.get_text()
         # TODO 优化学堂在线的简介部分导出方法
-        info.introduction = page_about_bs.find("section", id="courseIntro").get_text().encode('gbk', 'ignore').decode('gbk','ignore')
+        info.introduction = page_about_bs.find("section", id="courseIntro").get_text().encode('gbk', 'ignore').decode(
+            'gbk', 'ignore')
 
-        info.img_link = f"http://www.xuetangx.com{courseabout_detail_bs.find('div',id='video')['data-poster']}"
-        # video_link
-        video_ccid = courseabout_detail_bs.find("div", id="video")["data-ccid"]
-        r = session.get(url=f"http://www.xuetangx.com/videoid2source/{video_ccid}")
-        r_json = json.loads(r.text)
-        if r_json["sources"]:
-            if r_json["sources"]["quality20"][0]:
-                info.video_link = r_json["sources"]["quality20"][0]
-            else:
-                info.video_link = r_json["sources"]["quality10"][0]
+        video_box = courseabout_detail_bs.find('div', class_='video_box')
+        try:
+            info.img_link = f"http://www.xuetangx.com{video_box['data-poster']}"
+            # video_link
+            video_ccid = video_box["data-ccid"]
+            r = session.get(url=f"http://www.xuetangx.com/videoid2source/{video_ccid}")
+            r_json = json.loads(r.text)
+            if r_json["sources"]:
+                if r_json["sources"]["quality20"][0]:
+                    info.video_link = r_json["sources"]["quality20"][0]
+                else:
+                    info.video_link = r_json["sources"]["quality10"][0]
+        except KeyError:
+            info.img_link = "http://www.xuetangx.com{0}".format(video_box.img["src"])
         return info
     else:
         raise FileNotFoundError("Not found this course in \"xuetangx.com\",Check Please")
 
 
-def icourse163_info(info=CourseInfo(), url=""):
-    cid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<cid>[\w:+-]+)(\?tid=(?P<tid>\d+))?)#?/?", url)
-    if cid:
+def icourse163_info(cid, info=CourseInfo()):
+    c_tid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<c_id>[\w:+-]+)(\?tid=(?P<t_id>\d+))?)#?/?", cid)
+    if c_tid:
         tid_flag = False
-        if cid.group("tid"):
+        if c_tid.group("tid"):
             # 当使用者提供tid的时候默认使用使用者tid
-            info.id = cid.group("tid")
-            info_url = f"http://www.icourse163.org/course/{cid.group('id')}#/info"
+            info.id = c_tid.group("tid")
+            info_url = f"http://www.icourse163.org/course/{c_tid.group('id')}#/info"
             tid_flag = True
         else:
             # 否则通过info页面重新获取最新tid
             print("No termId which you want to download.Will Choose the Lastest term.")
-            info_url = f"http://www.icourse163.org/course/{cid.group('cid')}#/info"  # 使用课程默认地址
+            info_url = f"http://www.icourse163.org/course/{c_tid.group('cid')}#/info"  # 使用课程默认地址
         page_about = session.get(url=info_url)
         if page_about.url == page_about.request.url:  # 存在该课程
             # 当课程不存在的时候会302重定向到http://www.icourse163.org/，通过检查返回、请求地址是否一致判断
-            bs = BeautifulSoup(page_about.text, "html5lib")
+            bs = BeautifulSoup(page_about.text, "lxml")
             course_info_raw = bs.find("script", text=re.compile(r"termDto")).string.replace("\n", "")
             if not tid_flag:  # 没有提供tid时候自动寻找最新课程信息
                 info.id = re.search(r"termId : \"(\d+)\"", course_info_raw).group(1)
@@ -194,14 +198,14 @@ def make_intro_file(info, path):
         intro.write(f"{info.introduction}\n")
 
 
-def out_info(info_page_url="", download_path=None):
+def out_info(site: str, cid: str, download_path=None):
     # 生成配置信息
     info = CourseInfo()  # 默认情况
     print("Loading Course's info")
-    if info_page_url.find("www.xuetangx.com") != -1:
-        info = xuetanx_info(url=info_page_url)
-    if info_page_url.find("www.icourse163.org") != -1:
-        info = icourse163_info(url=info_page_url)
+    if site.find("xuetangx.com") != -1:
+        info = xuetanx_info(cid=cid)
+    if site.find("icourse163.org") != -1:
+        info = icourse163_info(cid=cid)
     if info.folder:  # 确认已经获取到信息
         path = f"{download_path}\\{info.folder}"
         print(f"The Download INFO:\n"
@@ -209,6 +213,5 @@ def out_info(info_page_url="", download_path=None):
               f"Course:{info.folder}\n"
               f"id:{info.id}")
         make_intro_file(info, path)
-        return info
-    else:
-        raise FileNotFoundError()
+
+    return info

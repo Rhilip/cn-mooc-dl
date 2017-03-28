@@ -22,11 +22,13 @@ class Config:
 
         # Download Setting
         self.Download = str2bool(setting["Download"])
-        self.Download_Queue_Length = int(setting["Download_Queue_Length"])
+        self.Download_Method = setting["Download_Method"]
+
         self.Download_Path = setting["Download_Path"]
         self.Download_Docs = str2bool(setting["Download_Docs"])
         self.Download_Srt = str2bool(setting["Download_Srt"])
 
+        self.Download_Queue_Length = int(setting["Download_Queue_Length"])
 
 def load_config(config_file, site):
     config = configparser.ConfigParser()
