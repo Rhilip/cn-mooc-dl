@@ -49,13 +49,14 @@ def sort_teacher(teacher_list):
     return '、'.join(teacher_name)
 
 
-def xuetanx_info(cid, info=CourseInfo()):
-    page_about = session.get(url=f"http://www.xuetangx.com/courses/{cid}/about")
+def xuetangx_info(url, info=CourseInfo()):
+    cid = re.search(r"courses/(?P<id>.+)$", url).group("id")
+    page_about = session.get(url="http://www.xuetangx.com/courses/{cid}/about".format(cid=cid))
     if page_about.text.find("页面无法找到") == -1:  # 存在该课程
         page_about_bs = BeautifulSoup(page_about.text, "lxml")
         # 获取课程信息
         info.id = cid
-        info.url = f"http://www.xuetangx.com/courses/{cid}/about"
+        info.url = "http://www.xuetangx.com/courses/{cid}/about".format(cid=cid)
         courseabout_detail_bs = page_about_bs.find("section", class_="courseabout_detail")
         course_name_tag = courseabout_detail_bs.find("h3", class_="courseabout_title")
 
@@ -66,19 +67,12 @@ def xuetanx_info(cid, info=CourseInfo()):
 
         # spider_info （建议在抓取完后检查修改）
         info_div = page_about_bs.find("div", class_="course_info")
-        course_type = None
-        course_type_search = re.search(r"[(（](?P<type>(\d{,4}[春夏秋冬])|(自主模式).+?)[)）]", info.title)
-        if course_type_search:
-            course_type = course_type_search.group("type")
-        # TODO 请考虑这里使用split分割后在取前段合适还是直接使用字符串截取方便
+        # TODO 请实验这里使用split分割后在取前段合适还是直接使用字符串截取方便
         start_time = info_div["data-start"].split("+")[0]  # '2017-03-15 01:00:00+00:00' -> '2017-03-15 01:00:00'
         end_time = info_div["data-end"].split("+")[0]
-        if course_type:
-            info.spider_info += "抓取开课类型（次数）：{0}\n".format(course_type)
-        else:
-            info.spider_info += "抓取开课类型（次数）：未知\n"
-        info.spider_info += "课程时间：\n开课：{start}\n结束：{end}\n\n".format(start=start_time, end=end_time) \
-                            + "抓取内容：\n课程视频（MP4超清源）\n课程文档（PDF）\n字幕\n\n抓取补充说明：\n无"
+        info.spider_info += "抓取开课类型（次数）：未知\n" \
+                            + "课程时间：\n开课：{start}\n结束：{end}\n\n".format(start=start_time, end=end_time) \
+                            + "抓取内容：\n课程视频（MP4高清源）\n课程文档（PDF）\n字幕\n\n抓取补充说明：\n无"
         info.description = info_div.p.get_text()
         # TODO 优化学堂在线的简介部分导出方法
         info.introduction = page_about_bs.find("section", id="courseIntro").get_text().encode('gbk', 'ignore').decode(
@@ -86,10 +80,9 @@ def xuetanx_info(cid, info=CourseInfo()):
 
         video_box = courseabout_detail_bs.find('div', class_='video_box')
         try:
-            info.img_link = f"http://www.xuetangx.com{video_box['data-poster']}"
+            info.img_link = "http://www.xuetangx.com{0}".format(video_box['data-poster'])
             # video_link
-            video_ccid = video_box["data-ccid"]
-            r = session.get(url=f"http://www.xuetangx.com/videoid2source/{video_ccid}")
+            r = session.get(url="http://www.xuetangx.com/videoid2source/{0}".format(video_box["data-ccid"]))
             r_json = json.loads(r.text)
             if r_json["sources"]:
                 if r_json["sources"]["quality20"][0]:
@@ -103,8 +96,8 @@ def xuetanx_info(cid, info=CourseInfo()):
         raise FileNotFoundError("Not found this course in \"xuetangx.com\",Check Please")
 
 
-def icourse163_info(cid, info=CourseInfo()):
-    c_tid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<c_id>[\w:+-]+)(\?tid=(?P<t_id>\d+))?)#?/?", cid)
+def icourse163_info(url: str, info=CourseInfo()):
+    c_tid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<c_id>[\w:+-]+)(\?tid=(?P<t_id>\d+))?)#?/?", url)
     if c_tid:
         tid_flag = False
         if c_tid.group("tid"):
@@ -198,14 +191,14 @@ def make_intro_file(info, path):
         intro.write(f"{info.introduction}\n")
 
 
-def out_info(site: str, cid: str, download_path=None):
+def out_info(url: str, download_path=None):
     # 生成配置信息
     info = CourseInfo()  # 默认情况
     print("Loading Course's info")
-    if site.find("xuetangx.com") != -1:
-        info = xuetanx_info(cid=cid)
-    if site.find("icourse163.org") != -1:
-        info = icourse163_info(cid=cid)
+    if url.find("xuetangx.com") != -1:
+        info = xuetangx_info(url=url)
+    if url.find("icourse163.org") != -1:
+        info = icourse163_info(url=url)
     if info.folder:  # 确认已经获取到信息
         path = f"{download_path}\\{info.folder}"
         print(f"The Download INFO:\n"

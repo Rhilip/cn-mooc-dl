@@ -8,25 +8,23 @@ import model
 
 class VideoInfo:
     def __init__(self, resp_json):
-        try:
-            self.sources = resp_json['sources']
-            if resp_json['sources']:
+        self.sources = resp_json['sources']
+        self.hd = None
+        if self.sources:
+            if self.sources['quality20']:
                 self.hd = self.sources['quality20'][0]
+            if self.sources['quality10']:
                 self.sd = self.sources['quality10'][0]
-        except IndexError or AttributeError:
-            print(resp_json)
 
 
 # 从用户给的url中寻找课程id
-def main(course_url, config, session):
+def main(course_url, config):
+    session = model.login(site="xuetangx", conf=config)
     course_id_search = re.search(r"courses/(?P<id>.+)/(courseware|info|discussion|wiki|progress|about)", course_url)
-    if not course_id_search:
-        print("No course Id,Please check!")
-        return
-    else:
+    if course_id_search:
         course_id = course_id_search.group("id")
         main_page = "http://www.xuetangx.com/courses/{course_id}".format(course_id=course_id)
-        info = model.out_info(site="http://www.xuetangx.com/", cid=course_id, download_path=config.Download_Path)
+        info = model.out_info(url=main_page, download_path=config.Download_Path)
         main_path = model.generate_path([config.Download_Path, info.folder])
 
         # 下载信息缓存列表
@@ -64,7 +62,7 @@ def main(course_url, config, session):
                 for lesson in week.ul.find_all("a"):
                     # 获取课程信息
                     lesson_name = model.clean_filename(lesson.p.string)  # 主标题
-                    lesson_page = session.get(url=f"http://www.xuetangx.com{lesson['href']}").text
+                    lesson_page = session.get(url="http://www.xuetangx.com{href}".format(href=lesson['href'])).text
                     lesson_bs = BeautifulSoup(lesson_page, "lxml")
 
                     tab_list = {}
@@ -92,18 +90,20 @@ def main(course_url, config, session):
 
                         if re.search(r"data-type=[\'\"]Video[\'\"]", seq.text):  # 视频
                             lesson_ccsource = re.search(r"data-ccsource=[\'\"](.+)[\'\"]", seq.text).group(1)
-                            r = session.get(url=f"http://www.xuetangx.com/videoid2source/{lesson_ccsource}")
+                            r = session.get(url="http://www.xuetangx.com/videoid2source/{0}".format(lesson_ccsource))
                             video = VideoInfo(resp_json=json.loads(r.text))
                             if video.sources is not None:
-                                if video.hd:
+                                if video.hd:  # AttributeError
                                     video_link = video.hd
                                     video_file_name = "{0}.mp4".format(seq_name)
-                                else:
+                                elif video.sd:
                                     video_link = video.sd
                                     video_file_name = "{0}_sd.mp4".format(seq_name)
+                                else:
+                                    raise FileNotFoundError(r.text)
 
                                 video_file_path = model.generate_path([seq_path, video_file_name])
-                                print("视频: \"{name}\" {link}".format(name=video_file_name, link=video_link))
+                                print("视频: \"{name}\" \"{link}\"".format(name=video_file_name, link=video_link))
                                 video_list.append((video_link, video_file_path))
                                 seq_bs = BeautifulSoup(seq.text, "lxml")
                                 if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
@@ -111,14 +111,14 @@ def main(course_url, config, session):
                                     srt_link = "http://www.xuetangx.com{0}".format(raw_link)
                                     srt_file_name = "{0}.srt".format(seq_name)
                                     srt_file_path = model.generate_path([srt_path, srt_file_name])
-                                    print("字幕: \"{name}\" {link}".format(name=srt_file_name, link=srt_link))
+                                    print("字幕: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_link))
                                     srt_list.append((srt_link, srt_file_path))
                                 if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
                                     raw_link = seq_bs.find("a", text="下载讲义")["href"]
                                     doc_link = "http://www.xuetangx.com{0}".format(raw_link)
                                     doc_file_name = model.clean_filename(doc_link.split("/")[-1])
                                     doc_file_path = model.generate_path([doc_path, doc_file_name])
-                                    print("文档: \"{name}\" {link}".format(name=doc_file_name, link=doc_link))
+                                    print("文档: \"{name}\" \"{link}\"".format(name=doc_file_name, link=doc_link))
                                     doc_list.append((doc_link, doc_file_path))
 
         else:  # 未登陆成功或者没参加该课程
@@ -130,10 +130,10 @@ def main(course_url, config, session):
         info_bs = BeautifulSoup(page_info.text, "lxml")
         doc_menu = info_bs.find("section", attrs={"aria-label": re.compile("讲义导航")})
         for each in doc_menu.find_all("a"):
-            doc_name = "{0}.pdf".format(each.string)
+            doc_name = each["href"].split("/")[-1]
             doc_link = "http://www.xuetangx.com{0}".format(each["href"])
             doc_file_path = model.generate_path([main_path, "docs", doc_name])
-            print("文档: \"{name}\" {link}".format(name=doc_name, link=doc_link))
+            print("文档: \"{name}\" \"{link}\"".format(name=doc_name, link=doc_link))
             doc_list.append((doc_link, doc_file_path))
 
         # TODO 写数据库，方便快速恢复下载
@@ -147,6 +147,9 @@ def main(course_url, config, session):
                 model.download_queue(session, info_list + video_list + srt_list + doc_list,
                                      queue_length=config.Download_Queue_Length)
 
+    else:
+        print("No course Id,Please check!")
+
     return
 
 
@@ -154,5 +157,4 @@ if __name__ == '__main__':
     course_url = ""
     # Loading config
     config = model.config("settings.conf", "xuetangx")
-    session = model.login(site="xuetangx", conf=config)
-    main(course_url, config, session)
+    main(course_url, config)
