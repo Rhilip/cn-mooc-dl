@@ -6,17 +6,6 @@ from bs4 import BeautifulSoup
 import model
 
 
-class VideoInfo:
-    def __init__(self, resp_json):
-        self.sources = resp_json['sources']
-        self.hd = None
-        if self.sources:
-            if self.sources['quality20']:
-                self.hd = self.sources['quality20'][0]
-            if self.sources['quality10']:
-                self.sd = self.sources['quality10'][0]
-
-
 # 从用户给的url中寻找课程id
 def main(course_url, config):
     session = model.login(site="xuetangx", conf=config)
@@ -91,41 +80,39 @@ def main(course_url, config):
                         if re.search(r"data-type=[\'\"]Video[\'\"]", seq.text):  # 视频
                             lesson_ccsource = re.search(r"data-ccsource=[\'\"](.+)[\'\"]", seq.text).group(1)
                             r = session.get(url="http://www.xuetangx.com/videoid2source/{0}".format(lesson_ccsource))
-                            video = VideoInfo(resp_json=json.loads(r.text))
-                            if video.sources is not None:
-                                if video.hd:  # AttributeError
-                                    video_link = video.hd
-                                    video_file_name = "{0}.mp4".format(seq_name)
-                                elif video.sd:
-                                    video_link = video.sd
-                                    video_file_name = "{0}_sd.mp4".format(seq_name)
-                                else:
-                                    raise FileNotFoundError(r.text)
+                            resp_json = json.loads(r.text)
 
-                                video_file_path = model.generate_path([seq_path, video_file_name])
-                                print("视频: \"{name}\" \"{link}\"".format(name=video_file_name, link=video_link))
-                                video_list.append((video_link, video_file_path))
-                                seq_bs = BeautifulSoup(seq.text, "lxml")
-                                if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
-                                    raw_link = seq_bs.find("a", text="下载字幕")["href"]
-                                    srt_link = "http://www.xuetangx.com{0}".format(raw_link)
-                                    srt_file_name = "{0}.srt".format(seq_name)
-                                    srt_file_path = model.generate_path([srt_path, srt_file_name])
-                                    print("字幕: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_link))
-                                    srt_list.append((srt_link, srt_file_path))
-                                if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
-                                    raw_link = seq_bs.find("a", text="下载讲义")["href"]
-                                    doc_link = "http://www.xuetangx.com{0}".format(raw_link)
-                                    doc_file_name = model.clean_filename(doc_link.split("/")[-1])
-                                    doc_file_path = model.generate_path([doc_path, doc_file_name])
-                                    print("文档: \"{name}\" \"{link}\"".format(name=doc_file_name, link=doc_link))
-                                    doc_list.append((doc_link, doc_file_path))
+                            if len(resp_json['sources']['quality20']) != 0:  # AttributeError
+                                video_link = resp_json['sources']['quality20'][0]
+                                video_file_name = "{0}.mp4".format(seq_name)
+                            elif len(resp_json['sources']['quality10']) != 0:
+                                video_link = resp_json['sources']['quality10'][0]
+                                video_file_name = "{0}_sd.mp4".format(seq_name)
+                            video_file_path = model.generate_path([seq_path, video_file_name])
+                            print("视频: \"{name}\" \"{link}\"".format(name=video_file_name, link=video_link))
+                            video_list.append((video_link, video_file_path))
+
+                            seq_bs = BeautifulSoup(seq.text, "lxml")
+                            if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
+                                raw_link = seq_bs.find("a", text="下载字幕")["href"]
+                                srt_link = "http://www.xuetangx.com{0}".format(raw_link)
+                                srt_file_name = "{0}.srt".format(seq_name)
+                                srt_file_path = model.generate_path([srt_path, srt_file_name])
+                                print("字幕: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_link))
+                                srt_list.append((srt_link, srt_file_path))
+                            if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
+                                raw_link = seq_bs.find("a", text="下载讲义")["href"]
+                                doc_link = "http://www.xuetangx.com{0}".format(raw_link)
+                                doc_file_name = model.clean_filename(doc_link.split("/")[-1])
+                                doc_file_path = model.generate_path([doc_path, doc_file_name])
+                                print("文档: \"{name}\" \"{link}\"".format(name=doc_file_name, link=doc_link))
+                                doc_list.append((doc_link, doc_file_path))
 
         else:  # 未登陆成功或者没参加该课程
             print("Something Error,You may not Join this course or Enter the wrong password.")
             return
 
-        # 处理info页面
+        # 处理info页面的课程讲义
         page_info = session.get(url="{0}/info".format(main_page))
         info_bs = BeautifulSoup(page_info.text, "lxml")
         doc_menu = info_bs.find("section", attrs={"aria-label": re.compile("讲义导航")})
@@ -135,8 +122,6 @@ def main(course_url, config):
             doc_file_path = model.generate_path([main_path, "docs", doc_name])
             print("文档: \"{name}\" \"{link}\"".format(name=doc_name, link=doc_link))
             doc_list.append((doc_link, doc_file_path))
-
-        # TODO 写数据库，方便快速恢复下载
 
         # 下载
         if config.Download:
