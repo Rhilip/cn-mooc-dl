@@ -100,15 +100,15 @@ def icourse163_info(url: str, info=CourseInfo()):
     c_tid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<c_id>[\w:+-]+)(\?tid=(?P<t_id>\d+))?)#?/?", url)
     if c_tid:
         tid_flag = False
-        if c_tid.group("tid"):
+        if c_tid.group("t_id"):
             # 当使用者提供tid的时候默认使用使用者tid
-            info.id = c_tid.group("tid")
-            info_url = f"http://www.icourse163.org/course/{c_tid.group('id')}#/info"
+            info.id = c_tid.group("t_id")
+            info_url = "http://www.icourse163.org/course/{id}#/info".format(id=c_tid.group('id'))
             tid_flag = True
         else:
             # 否则通过info页面重新获取最新tid
             print("No termId which you want to download.Will Choose the Lastest term.")
-            info_url = f"http://www.icourse163.org/course/{c_tid.group('cid')}#/info"  # 使用课程默认地址
+            info_url = "http://www.icourse163.org/course/{id}#/info".format(id=c_tid.group('c_id'))  # 使用课程默认地址
         page_about = session.get(url=info_url)
         if page_about.url == page_about.request.url:  # 存在该课程
             # 当课程不存在的时候会302重定向到http://www.icourse163.org/，通过检查返回、请求地址是否一致判断
@@ -143,7 +143,7 @@ def icourse163_info(url: str, info=CourseInfo()):
                                                                                                                 'ignore')
             info.img_link = bs.find("div", id="j-courseImg").img["src"]
             # intro_video
-            video_id = re.search(r"termId : \"(\d+)\"", course_info_raw).group(1)
+            video_id = re.search(r"videoId : \"(\d+)\"", course_info_raw).group(1)
             payload = {
                 'callCount': 1,
                 'scriptSessionId': '${scriptSessionId}190',  # 最后三个为随机数字，貌似不加也行
@@ -174,21 +174,15 @@ def icourse163_info(url: str, info=CourseInfo()):
 def make_intro_file(info, path):
     if not os.path.exists(path):
         os.makedirs(path)
-    if not os.path.exists(f"{path}\\课程介绍及抓取说明.txt"):
+    if not os.path.exists("{path}\\课程介绍及抓取说明.txt".format(path=path)):
         print("生成\"课程介绍及抓取说明\"中~")
-        intro = open(f"{path}\\课程介绍及抓取说明.txt", "a")
-        intro.write(f"MOOC课程地址：{info.url}\n")
-        intro.write("\n")
-        intro.write(f"{info.folder}\n")
-        intro.write("\n")
-        intro.write(f"发布大学：{info.school}\n")
-        intro.write(f"发布课程：{info.title}\n")
-        intro.write(f"授课老师：{info.teacher}\n")
-        intro.write(f"课程简介：{info.description}\n")
-        intro.write("\n")
-        intro.write(f"{info.spider_info}\n")
-        intro.write("\n")
-        intro.write(f"{info.introduction}\n")
+        with open("{path}\\课程介绍及抓取说明.txt".format(path=path), "a", encoding="UTF-8") as intro:
+            intro.write("MOOC课程地址：{url}\n\n".format(url=info.url))
+            intro.write("{folder}\n\n".format(folder=info.folder))
+            intro.write("发布大学：{0}\n发布课程：{1}\n授课老师：{2}\n".format(info.school, info.title, info.teacher))
+            intro.write("课程简介：{desc}\n\n".format(desc=info.description))
+            intro.write("{spider_info}\n\n".format(spider_info=info.spider_info))
+            intro.write("{introduction}\n".format(introduction=info.introduction))
 
 
 def out_info(url: str, download_path=None):
@@ -200,11 +194,9 @@ def out_info(url: str, download_path=None):
     if url.find("icourse163.org") != -1:
         info = icourse163_info(url=url)
     if info.folder:  # 确认已经获取到信息
-        path = f"{download_path}\\{info.folder}"
-        print(f"The Download INFO:\n"
-              f"link:{info.url}\n"
-              f"Course:{info.folder}\n"
-              f"id:{info.id}")
+        path = "{dp}\\{folder}".format(dp=download_path, folder=info.folder)
+        print("The Download INFO:\n"
+              "link:{url}\nCourse:{folder}\nid:{id}".format(url=info.url, folder=info.folder,id=info.id))
         make_intro_file(info, path)
 
     return info
