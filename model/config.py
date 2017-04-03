@@ -30,7 +30,8 @@ class Config:
 
         self.Download_Queue_Length = int(setting["Download_Queue_Length"])
 
+
 def load_config(config_file, site):
-    config = configparser.ConfigParser()
+    config = configparser.RawConfigParser()
     config.read(config_file, encoding="utf-8-sig")
     return Config(config[site])
