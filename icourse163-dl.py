@@ -5,11 +5,6 @@ import re
 import model
 
 
-def raw_unicode_escape(string: str) -> str:
-    return model.clean_filename(string.encode('utf-8').decode('unicode_escape')
-                                .encode('gbk', 'ignore').decode('gbk', 'ignore'))
-
-
 # -*- Main
 def main(course_url, config):
     # handle the course_url links to Get right courseId and termId
@@ -77,11 +72,11 @@ def main(course_url, config):
             for line in rdata.splitlines():
                 if re.match(week_reg, line):  # Week
                     week_re = re.search(week_reg, line)
-                    week_name = model.clean_filename(raw_unicode_escape(week_re.group("week_name")))
+                    week_name = model.clean_filename(model.raw_unicode_escape(week_re.group("week_name")))
                     week_list.append(week_name)
                 if re.match(chapter_reg, line):  # Chapter
                     chapter_re = re.search(chapter_reg, line)
-                    chapter_name = model.clean_filename(raw_unicode_escape(chapter_re.group("chapter_name")))
+                    chapter_name = model.clean_filename(model.raw_unicode_escape(chapter_re.group("chapter_name")))
                     chapter_list.append(chapter_name)
                     print("\n", week_list[-1], chapter_list[-1])
                     video_in_chapter_list.append(0)
@@ -89,7 +84,7 @@ def main(course_url, config):
                     lesson_re = re.search(lesson_reg, line)
                     lesson_loc_pattern = model.generate_path([week_list[-1], chapter_list[-1]])
 
-                    lesson_name = model.clean_filename(raw_unicode_escape(lesson_re.group("lesson_name")))
+                    lesson_name = model.clean_filename(model.raw_unicode_escape(lesson_re.group("lesson_name")))
                     lesson_content_type = int(lesson_re.group("contentType"))
 
                     # prepare data and post

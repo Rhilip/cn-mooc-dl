@@ -46,6 +46,10 @@ def clean_filename(string: str) -> str:
     return string
 
 
+def raw_unicode_escape(string: str) -> str:
+    return string.encode('utf-8').decode('unicode_escape').encode('gbk', 'ignore').decode('gbk', 'ignore')
+
+
 def mkdir_p(path, mode=0o777):
     """
     Create subdirectory hierarchy given in the paths argument.
