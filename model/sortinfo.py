@@ -143,29 +143,27 @@ def icourse163_info(url: str, info=CourseInfo()):
                                                                                                                 'ignore')
             info.img_link = bs.find("div", id="j-courseImg").img["src"]
             # intro_video
-            video_id = re.search(r"videoId : \"(\d+)\"", course_info_raw).group(1)
-            payload = {
-                'callCount': 1,
-                'scriptSessionId': '${scriptSessionId}190',  # 最后三个为随机数字，貌似不加也行
-                'httpSessionId': session.cookies["NTESSTUDYSI"],
-                'c0-scriptName': 'CourseBean',
-                'c0-methodName': 'getLessonUnitPreviewVo',
-                'c0-id': 0,
-                'c0-param0': video_id,
-                'c0-param1': 1,
-                'batchId': 1489407453123  # 随机数字(int(1e12~2e12))，这里随机选了个，就不引入随机数模块了
-            }
-            ask_video_url = "http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitPreviewVo.dwr"
-            resp = session.post(url=ask_video_url, data=payload).text
-            download_video_type = ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl', 'flvShdUrl', 'flvHdUrl', 'flvSdUrl']
-            video_link_list = []  # Get Video download type
-            for k in download_video_type:
-                video_search_group = re.search(r's\d+.(?P<VideoType>' + str(k) + ')="(?P<dllink>.+?)";', resp)
-                if video_search_group:
-                    dllink = video_search_group.group("dllink")
-                    video_link_list.append(dllink)
-            if video_link_list:
-                info.video_link = video_link_list[0]
+            video_search = re.search(r"videoId : \"(\d+)\"", course_info_raw)
+            if video_search:
+                video_id = video_search.group(1)
+                payload = {
+                    'callCount': 1,
+                    'scriptSessionId': '${scriptSessionId}190',  # 最后三个为随机数字，貌似不加也行
+                    'httpSessionId': session.cookies["NTESSTUDYSI"],
+                    'c0-scriptName': 'CourseBean',
+                    'c0-methodName': 'getLessonUnitPreviewVo',
+                    'c0-id': 0,
+                    'c0-param0': video_id,
+                    'c0-param1': 1,
+                    'batchId': 1489407453123  # 随机数字(int(1e12~2e12))，这里随机选了个，就不引入随机数模块了
+                }
+                ask_video_url = "http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitPreviewVo.dwr"
+                resp = session.post(url=ask_video_url, data=payload).text
+                for k in ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl']:  # , 'flvShdUrl', 'flvHdUrl', 'flvSdUrl'
+                    video_search_group = re.search(r's\d+.(?P<VideoType>' + str(k) + ')="(?P<dllink>.+?)";', resp)
+                    if video_search_group:
+                        info.video_link = video_search_group.group("dllink")
+                        break
         return info
     else:
         raise FileNotFoundError("Not found this course in \"icourse163.org\",Check Please")
