@@ -1,4 +1,5 @@
-import requests,re
+import re
+import requests
 from bs4 import BeautifulSoup
 
 course_url = 'http://ocw.nctu.edu.tw/course_detail_1.php?bgid=6&gid=0&nid=523'

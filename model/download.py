@@ -21,6 +21,13 @@ from queue import Queue
 from threading import Thread
 
 
+def link_check(hostname: str, href: str) -> str:
+    href = href.strip()
+    if href.find("http") == -1:  # TODO 看下这么判断是否是相对链接是否合适
+        href = "{0}{1}".format(hostname, href)
+    return href
+
+
 def generate_path(path_list: list) -> str:
     return_path = ""
     for path in path_list:

@@ -6,6 +6,7 @@ import json
 
 import requests
 from bs4 import BeautifulSoup
+from .download import link_check
 
 # Session
 headers = {
@@ -50,6 +51,7 @@ def sort_teacher(teacher_list):
 
 
 def xuetangx_info(url, info=CourseInfo()):
+    site = "http://www.xuetangx.com"
     cid = re.search(r"courses/(?P<id>.+)$", url).group("id")
     page_about = session.get(url="http://www.xuetangx.com/courses/{cid}/about".format(cid=cid))
     if page_about.text.find("页面无法找到") == -1:  # 存在该课程
@@ -80,7 +82,7 @@ def xuetangx_info(url, info=CourseInfo()):
 
         video_box = courseabout_detail_bs.find('div', class_='video_box')
         try:
-            info.img_link = "http://www.xuetangx.com{0}".format(video_box['data-poster'])
+            info.img_link = link_check(site, video_box['data-poster'])
             # video_link
             r = session.get(url="http://www.xuetangx.com/videoid2source/{0}".format(video_box["data-ccid"]))
             r_json = json.loads(r.text)
@@ -90,7 +92,7 @@ def xuetangx_info(url, info=CourseInfo()):
                 else:
                     info.video_link = r_json["sources"]["quality10"][0]
         except KeyError:
-            info.img_link = "http://www.xuetangx.com{0}".format(video_box.img["src"])
+            info.img_link = link_check(site, video_box.img["src"])
         return info
     else:
         raise FileNotFoundError("Not found this course in \"xuetangx.com\",Check Please")
@@ -194,7 +196,7 @@ def out_info(url: str, download_path=None):
     if info.folder:  # 确认已经获取到信息
         path = "{dp}\\{folder}".format(dp=download_path, folder=info.folder)
         print("The Download INFO:\n"
-              "link:{url}\nCourse:{folder}\nid:{id}".format(url=info.url, folder=info.folder,id=info.id))
+              "link:{url}\nCourse:{folder}\nid:{id}".format(url=info.url, folder=info.folder, id=info.id))
         make_intro_file(info, path)
 
     return info

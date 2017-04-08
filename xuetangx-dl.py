@@ -47,18 +47,21 @@ def main(course_url, config):
             chapter = courseware_bs.find_all("div", class_="chapter")
 
             for week in chapter:
-                week_name = week.h3.a.string.strip()
+                week_name = model.clean_filename(week.h3.a.string.strip())
                 for lesson in week.ul.find_all("a"):
                     # 获取课程信息
                     lesson_name = model.clean_filename(lesson.p.string)  # 主标题
-                    lesson_page = session.get(url="http://www.xuetangx.com{href}".format(href=lesson['href'])).text
-                    lesson_bs = BeautifulSoup(lesson_page, "lxml")
+                    lesson_page = session.get(url="http://www.xuetangx.com{href}".format(href=lesson['href']),
+                                              timeout=None)
+                    lesson_bs = BeautifulSoup(lesson_page.text, "lxml")
 
                     tab_list = {}
                     for tab in lesson_bs.find_all("a", role="tab"):
                         tab_list[tab.get('id')] = re.search("(.+)", tab.get('title')).group(1)
 
                     seq_contents = lesson_bs.find_all('div', class_="seq_contents")
+
+                    print("\n", week_name, lesson_name)
 
                     seq_video_content_len = 0
                     for seq in seq_contents:
@@ -95,14 +98,14 @@ def main(course_url, config):
                             seq_bs = BeautifulSoup(seq.text, "lxml")
                             if config.Download_Srt and seq_bs.find("a", text="下载字幕"):  # 字幕
                                 raw_link = seq_bs.find("a", text="下载字幕")["href"]
-                                srt_link = "http://www.xuetangx.com{0}".format(raw_link)
+                                srt_link = model.link_check("http://www.xuetangx.com", raw_link)
                                 srt_file_name = "{0}.srt".format(seq_name)
                                 srt_file_path = model.generate_path([srt_path, srt_file_name])
                                 print("字幕: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_link))
                                 srt_list.append((srt_link, srt_file_path))
                             if config.Download_Docs and seq_bs.find("a", text="下载讲义"):  # 讲义
                                 raw_link = seq_bs.find("a", text="下载讲义")["href"]
-                                doc_link = "http://www.xuetangx.com{0}".format(raw_link)
+                                doc_link = model.link_check("http://www.xuetangx.com", raw_link)
                                 doc_file_name = model.clean_filename(doc_link.split("/")[-1])
                                 doc_file_path = model.generate_path([doc_path, doc_file_name])
                                 print("文档: \"{name}\" \"{link}\"".format(name=doc_file_name, link=doc_link))
@@ -118,7 +121,7 @@ def main(course_url, config):
         doc_menu = info_bs.find("section", attrs={"aria-label": re.compile("讲义导航")})
         for each in doc_menu.find_all("a"):
             doc_name = each["href"].split("/")[-1]
-            doc_link = "http://www.xuetangx.com{0}".format(each["href"])
+            doc_link = model.link_check("http://www.xuetangx.com", each["href"])
             doc_file_path = model.generate_path([main_path, "docs", doc_name])
             print("文档: \"{name}\" \"{link}\"".format(name=doc_name, link=doc_link))
             doc_list.append((doc_link, doc_file_path))
