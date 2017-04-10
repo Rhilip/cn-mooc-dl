@@ -1,22 +1,84 @@
 # -*- coding: utf-8 -*-
 import random
 import re
+from bs4 import BeautifulSoup
 
 import model
 
 
 # -*- Main
-def main(course_url, config):
-    # handle the course_url links to Get right courseId and termId
-    if not re.search(r'([A-Za-z]*-\d*)', course_url):
-        print("No course Id,Please check!")
-        return
-    else:
-        session = model.login(site="icourse163", conf=config)
-        httpSessionId = session.cookies["NTESSTUDYSI"]
+def main(course_url):
+    config = model.config("settings.conf", "icourse163")
+    session = model.login(site="icourse163", conf=config)
+    httpSessionId = session.cookies["NTESSTUDYSI"]
+    c_tid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<c_id>[\w:+-]+)(\?tid=(?P<t_id>\d+))?)#?/?", course_url)
 
-        info = model.out_info(url=course_url, download_path=config.Download_Path)
-        main_path = model.generate_path([config.Download_Path, info.folder])
+    # Download cache list
+    main_list = []
+    srt_list = []
+    doc_list = []
+
+    # handle the course_url links to Get right courseId and termId
+    if c_tid:
+        if c_tid.group("t_id"):  # 当使用者提供tid的时候默认使用使用者tid
+            term_id = c_tid.group("t_id")
+            info_url = "http://www.icourse163.org/course/{id}#/info".format(id=c_tid.group('id'))
+        else:  # 否则通过info页面重新获取最新tid
+            term_id = None
+            print("No termId which you want to download.Will Choose the Lastest term.")
+            info_url = "http://www.icourse163.org/course/{id}#/info".format(id=c_tid.group('c_id'))  # 使用课程默认地址
+        page_about = session.get(url=info_url)
+        if page_about.url == page_about.request.url:  # 存在该课程
+            # 当课程不存在的时候会302重定向到http://www.icourse163.org/，通过检查返回、请求地址是否一致判断
+            page_about_bs = BeautifulSoup(page_about.text, "lxml")
+            course_info_raw = page_about_bs.find("script", text=re.compile(r"termDto")).string.replace("\n", "")
+            if term_id is None:  # 没有提供tid时候自动寻找最新课程信息
+                term_id = re.search(r"termId : \"(\d+)\"", course_info_raw).group(1)
+            # 获取课程信息
+            course_title = re.search(r'(.+?)_(.+?)_(.+?)', page_about_bs.title.string).group(1)
+            school = re.search(r'(.+?)_(.+?)_(.+?)', page_about_bs.title.string).group(2)
+            teacher = model.sort_teacher(page_about_bs.find_all('h3', class_="f-fc3"))
+            folder = '-'.join([course_title, school, teacher])
+
+            print("The Download INFO:\n"  # Output download course info
+                  "link:{url}\nCourse:{folder}\nid:{id}\n".format(url=info_url, folder=folder, id=term_id))
+
+            main_path = model.generate_path([config.Download_Path, folder])
+
+            info_img_link = page_about_bs.find("div", id="j-courseImg").img["src"]
+            img_file_name = r"课程封面图-{title}.png".format(title=course_title)
+            img_file_path = model.generate_path([main_path, img_file_name])
+            print("课程封面图: {link}".format(link=info_img_link))
+            main_list.append((info_img_link, img_file_path))
+
+            # intro_video
+            video_search = re.search(r"videoId : \"(\d+)\"", course_info_raw)
+            if video_search:
+                payload = {
+                    'callCount': 1,
+                    'scriptSessionId': '${scriptSessionId}' + str(random.randint(0, 200)),
+                    'httpSessionId': httpSessionId,
+                    'c0-scriptName': 'CourseBean',
+                    'c0-methodName': 'getLessonUnitPreviewVo',
+                    'c0-id': 0,
+                    'c0-param0': video_search.group(1),
+                    'c0-param1': 1,
+                    'batchId': random.randint(1000000000000, 20000000000000)
+                }
+                ask_video_url = "http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLessonUnitPreviewVo.dwr"
+                resp = session.post(url=ask_video_url, data=payload).text
+                for k in ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl']:  # , 'flvShdUrl', 'flvHdUrl', 'flvSdUrl'
+                    video_search_group = re.search(r's\d+.(?P<VideoType>' + str(k) + ')="(?P<dllink>.+?)";', resp)
+                    if video_search_group:
+                        info_video_link = video_search_group.group("dllink")
+                        video_file_name = r"课程简介-{title}.mp4".format(title=course_title)
+                        video_file_path = model.generate_path([main_path, video_file_name])
+                        print("课程简介视频: {link}".format(link=info_video_link))
+                        main_list.append((info_video_link, video_file_path))
+                        break
+        else:
+            print("Not found this course in \"icourse163.org\",Check Please")
+            return
 
         # Get course's chapter
         payload = {
@@ -26,31 +88,14 @@ def main(course_url, config):
             'c0-scriptName': 'CourseBean',
             'c0-methodName': 'getLastLearnedMocTermDto',
             'c0-id': 0,
-            'c0-param0': info.id,
+            'c0-param0': term_id,
             'batchId': random.randint(1000000000000, 20000000000000)
         }
         cs_url = 'http://www.icourse163.org/dwr/call/plaincall/CourseBean.getLastLearnedMocTermDto.dwr'
         rdata = session.post(cs_url, data=payload, timeout=None).text
 
-        if re.search(r'var s\d+=\{\}', rdata):
+        if re.search(r"var s\d+={}", rdata):
             print("Generate Download information.")
-            # 下载信息缓存列表
-            info_list = []
-            video_list = []
-            srt_list = []
-            doc_list = []
-
-            # info中提取的img_link,video_link
-            if info.img_link:
-                img_file_name = r"课程封面图-{title}.png".format(title=info.title)
-                img_file_path = model.generate_path([main_path, img_file_name])
-                print("课程封面图: {link}".format(link=info.img_link))
-                info_list.append((info.img_link, img_file_path))
-            if info.video_link:
-                video_file_name = r"课程简介-{title}.mp4".format(title=info.title)
-                video_file_path = model.generate_path([main_path, video_file_name])
-                print("课程简介视频: {link}".format(link=info.video_link))
-                info_list.append((info.video_link, video_file_path))
 
             # Data cleaning Reg
             week_reg = re.compile(r"s\d+.contentId=null;"
@@ -117,7 +162,7 @@ def main(course_url, config):
                                     video_file_name = "{0}_{type}.mp4".format(count_lesson_name, type=k_type)
                                 video_link = re.search(r's\d+.' + str(k) + r'="(.+?\.mp4).+?";', rdata).group(1)
                                 video_file_path = model.generate_path([main_path, lesson_loc_pattern, video_file_name])
-                                video_list.append((video_link, video_file_path))
+                                main_list.append((video_link, video_file_path))
                                 print("视频: \"{name}\" \"{link}\"".format(name=video_file_name, link=video_link))
                                 break
                         # Subtitle
@@ -149,19 +194,21 @@ def main(course_url, config):
 
             if config.Download:
                 if config.Download_Method == "Aria2":  # 这里是调用aria2的下载
-                    model.aira2_download(info_list + video_list)
+                    model.aira2_download(main_list)
                     # 需要session或者有时间期限的，仍然使用自建下载
                     model.download_queue(session, srt_list + doc_list, queue_length=config.Download_Queue_Length)
                 else:  # 默认调用自建下载
-                    model.download_queue(session, info_list + video_list + srt_list + doc_list,
+                    model.download_queue(session, main_list + srt_list + doc_list,
                                          queue_length=config.Download_Queue_Length)
         else:
             err_message = re.search(r'message:(.+)\}\)', rdata).group(1)
             print("Error:{0},Please make sure you login by 163-email "
                   "and your \"Session-Cookies\" pair is right.".format(err_message))
+    else:
+        print("No course Id,Please check!")
+        return
 
 
 if __name__ == '__main__':
     course_url = ""
-    config = model.config("settings.conf", "icourse163")
-    main(course_url, config=config)
+    main(course_url)
