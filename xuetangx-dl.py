@@ -44,11 +44,11 @@ def main(course_url):
             course_detail_bs = page_about_bs.find("section", class_="courseabout_detail")
             course_name_tag = course_detail_bs.find("h3", class_="courseabout_title")
 
-            course_title = course_name_tag.get_text()
+            course_title = model.clean_filename(course_name_tag.get_text())
             school = course_name_tag.find_next("a").get_text()
             teacher = model.sort_teacher(
                 page_about_bs.find("ul", class_="teacher_info").find_all("span", class_="name"))
-            folder = '-'.join([course_title, school, teacher])
+            folder = model.clean_filename('-'.join([course_title, school, teacher]))
 
             print("The Download INFO:\n"  # Output download course info
                   "link:{url}\nCourse:{folder}\nid:{id}\n".format(url=page_about_url, folder=folder, id=course_id))

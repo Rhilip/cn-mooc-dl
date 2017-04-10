@@ -10,7 +10,7 @@ import model
 def main(course_url):
     config = model.config("settings.conf", "icourse163")
     session = model.login(site="icourse163", conf=config)
-    httpSessionId = session.cookies["NTESSTUDYSI"]
+    http_session_id = session.cookies["NTESSTUDYSI"]
     c_tid = re.search(r"(?:(learn)|(course))/(?P<id>(?P<c_id>[\w:+-]+)(\?tid=(?P<t_id>\d+))?)#?/?", course_url)
 
     # Download cache list
@@ -35,10 +35,11 @@ def main(course_url):
             if term_id is None:  # 没有提供tid时候自动寻找最新课程信息
                 term_id = re.search(r"termId : \"(\d+)\"", course_info_raw).group(1)
             # 获取课程信息
-            course_title = re.search(r'(.+?)_(.+?)_(.+?)', page_about_bs.title.string).group(1)
-            school = re.search(r'(.+?)_(.+?)_(.+?)', page_about_bs.title.string).group(2)
+            course_page_title = re.search(r'(.+?)_(.+?)_(.+?)', page_about_bs.title.string)
+            course_title = model.clean_filename(course_page_title.group(1))
+            school = course_page_title.group(2)
             teacher = model.sort_teacher(page_about_bs.find_all('h3', class_="f-fc3"))
-            folder = '-'.join([course_title, school, teacher])
+            folder = model.clean_filename('-'.join([course_title, school, teacher]))
 
             print("The Download INFO:\n"  # Output download course info
                   "link:{url}\nCourse:{folder}\nid:{id}\n".format(url=info_url, folder=folder, id=term_id))
@@ -57,7 +58,7 @@ def main(course_url):
                 payload = {
                     'callCount': 1,
                     'scriptSessionId': '${scriptSessionId}' + str(random.randint(0, 200)),
-                    'httpSessionId': httpSessionId,
+                    'httpSessionId': http_session_id,
                     'c0-scriptName': 'CourseBean',
                     'c0-methodName': 'getLessonUnitPreviewVo',
                     'c0-id': 0,
@@ -84,7 +85,7 @@ def main(course_url):
         payload = {
             'callCount': 1,
             'scriptSessionId': '${scriptSessionId}' + str(random.randint(0, 200)),
-            'httpSessionId': httpSessionId,
+            'httpSessionId': http_session_id,
             'c0-scriptName': 'CourseBean',
             'c0-methodName': 'getLastLearnedMocTermDto',
             'c0-id': 0,
@@ -136,7 +137,7 @@ def main(course_url):
                     payload = {
                         'callCount': 1,
                         'scriptSessionId': '${scriptSessionId}' + str(random.randint(0, 200)),
-                        'httpSessionId': httpSessionId,
+                        'httpSessionId': http_session_id,
                         'c0-scriptName': 'CourseBean',
                         'c0-methodName': 'getLessonUnitLearnVo',
                         'c0-id': 1,
@@ -153,7 +154,7 @@ def main(course_url):
                     # 1 -> Video ,2 -> Test ,3 -> Docs ,4 -> Rich text ,5 -> Examination ,6 -> Discussion
                     if lesson_content_type == 1:  # Video
                         count = video_in_chapter_list[-1]
-                        count_lesson_name = "{0} {lesson}".format(count, lesson=lesson_name)
+                        count_lesson_name = model.clean_filename("{0} {lesson}".format(count, lesson=lesson_name))
                         for k in ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl']:  # , 'flvShdUrl', 'flvHdUrl', 'flvSdUrl'
                             if re.search(r's\d+.{0}=".+?";'.format(k), rdata):
                                 k_type = re.search("mp4(.+)Url", k).group(1)
