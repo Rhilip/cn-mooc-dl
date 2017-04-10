@@ -211,5 +211,5 @@ def main(course_url):
 
 
 if __name__ == '__main__':
-    course_url = ""
+    course_url = "http://www.icourse163.org/course/BIT-1001870001#/info"
     main(course_url)

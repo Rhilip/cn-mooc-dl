@@ -178,5 +178,5 @@ def main(course_url):
 
 
 if __name__ == '__main__':
-    course_url = ""
+    course_url = "http://www.xuetangx.com/courses/course-v1:NUDT+0811101+2017_T1/about"
     main(course_url)
