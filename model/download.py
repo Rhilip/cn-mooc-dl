@@ -17,6 +17,7 @@ import progressbar
 import requests
 
 from html import unescape
+from urllib.parse import unquote
 from queue import Queue
 from threading import Thread
 
@@ -43,6 +44,7 @@ def clean_filename(string: str) -> str:
     characters that are problematic for filesystems (namely, ':', '/' and '\x00', '\n').
     """
     string = unescape(string)
+    string = unquote(string)
     string = re.sub(r'<(?P<tag>.+?)>(?P<in>.+?)<(/(?P=tag))>', "\g<in>", string)
 
     string = string.replace(':', '_').replace('/', '_').replace('\x00', '_')
@@ -82,7 +84,6 @@ class DownloadQueue(Thread):
     def run(self):
         while True:
             # Get the work from the queue and expand the tuple
-            # 从队列中获取任务并扩展tuple
             session, url, filename = self.queue.get()
             direct_download(session, url, filename)
             self.queue.task_done()
@@ -98,10 +99,12 @@ def direct_download(session: requests.Session(), url: str, file: str, resume=Tru
         resume_len = 0
         file_mode = 'wb'
 
-    try:
-        attempts_count = 0
-        while attempts_count < retry:
+    attempts_count = 0
+    while attempts_count < retry:
+        wait_interval = min(2 ** (attempts_count + 1), 60)  # Exponential concession，Max 60s
+        try:
             pre_response = session.get(url, stream=True)
+
             # 已下载完成检查
             total_length = int(pre_response.headers['content-length'])
             if resume_len != 0:
@@ -128,10 +131,9 @@ def direct_download(session: requests.Session(), url: str, file: str, resume=Tru
                 # 异常类型判断
                 if response.status_code == 416:  # 检查416（客户端请求字节范围无法满足） -> 禁止resume
                     # TODO 该步的必要性还值得讨论，直接禁止resume是否过于暴力
-                    print("local file:\"{0}\" may wrong,Stop resume.".format(name))
+                    print(error_msg + "local file:\"{0}\" may wrong,Stop resume.".format(name))
                     raise ValueError(error_msg)
                 if attempts_count < retry:
-                    wait_interval = min(2 ** (attempts_count + 1), 60)  # Exponential concession，Max 60s
                     print('Error to download \"{0}\", will retry in {1}s.'.format(name, wait_interval))
                     time.sleep(wait_interval)
                     attempts_count += 1
@@ -154,10 +156,14 @@ def direct_download(session: requests.Session(), url: str, file: str, resume=Tru
             # 下载完成，移除标记文件，退出
             os.remove("{file}.temp".format(file=file))  # 完成下载 -> 移除标记文件
             return
-    except ValueError as err:
-        direct_download(session, url, file, resume=False)
-    except TimeoutError as err:
-        print(err.args)
+        except ValueError:
+            resume_len = 0
+            file_mode = 'wb'
+            continue
+        except requests.exceptions.ConnectionError:
+            print('Error to download \"{0}\",time: {1},will retry in {2}s'.format(name, attempts_count, wait_interval))
+            attempts_count += 1
+            continue
 
 
 def download_queue(session, download_list, queue_length=1):  # 多线程下载模块
