@@ -33,8 +33,8 @@ def main(course_url):
             course_info_raw = page_about_bs.find("script", text=re.compile(r"termDto")).string.replace("\n", "")
             if term_id is None:  # 没有提供tid时候自动寻找最新课程信息
                 term_id = re.search(r"termId : \"(\d+)\"", course_info_raw).group(1)
-            course_title = model.clean_filename(page_about_bs.find("h2",class_="f-fl").get_text())
-            school = re.search(r"window.schoolDto = {.+?name:\"(.+?)\"}",course_info_raw).group(1)
+            course_title = model.clean_filename(page_about_bs.find("h2", class_="f-fl").get_text())
+            school = re.search(r"window.schoolDto = {.+?name:\"(.+?)\"}", course_info_raw).group(1)
             teacher = model.sort_teacher(page_about_bs.find_all('h3', class_="f-fc3"))
             folder = model.clean_filename('-'.join([course_title, school, teacher]))
 
@@ -75,7 +75,7 @@ def main(course_url):
                         main_list.append((info_video_link, video_file_path))
                         break
         else:
-            print("Not found this course in \"icourse163.org\",Check Please")
+            print("Not found this course in \"study.163.com\",Check Please")
             return
 
         # Get course's chapter
@@ -147,53 +147,59 @@ def main(course_url):
                     rdata = session.post(cs_url, data=payload, timeout=None).text
                     # Sort data depend on it's contentType
                     # 1 -> Video ,2 -> Test ,3 -> Docs ,4 -> Rich text ,5 -> Examination ,6 -> Discussion
-                    if lesson_content_type == 1:  # Video
-                        count = video_in_chapter_list[-1]
-                        count_lesson_name = "{0} {lesson}".format(count, lesson=lesson_name)
-                        for k in ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl']:  # , 'flvShdUrl', 'flvHdUrl', 'flvSdUrl'
-                            if re.search(r's\d+.{0}=".+?";'.format(k), rdata):
-                                k_type = re.search("mp4(.+)Url", k).group(1)
-                                video_file_name = "{0}.mp4".format(count_lesson_name)
-                                if k_type != "Shd":
-                                    video_file_name = "{0}_{type}.mp4".format(count_lesson_name, type=k_type)
-                                video_link = re.search(r's\d+.' + str(k) + r'="(.+?\.mp4.+?)";', rdata).group(1)
-                                video_file_path = model.generate_path([main_path, lesson_loc_pattern, video_file_name])
-                                main_list.append((video_link, video_file_path))
-                                print("视频: \"{name}\" \"{link}\"".format(name=video_file_name, link=video_link))
-                                break
-                        # Subtitle
-                        if config.Download_Srt:
-                            srt_path = model.generate_path([main_path, "Srt", lesson_loc_pattern])
-                            if re.search(r's\d+.name="\\u4E2D\\u6587";s\d+.url="(.+?)"', rdata):  # Chinese
-                                srt_chs_re = re.search(r's\d+.name="\\u4E2D\\u6587";s\d+.url="(?P<url>.+?)"', rdata)
-                                srt_file_name = "{0}.chs.srt".format(count_lesson_name)
-                                srt_file_path = model.generate_path([srt_path, srt_file_name])
-                                srt_chs_link = srt_chs_re.group("url")
-                                print("字幕Chs: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_chs_link))
-                                srt_list.append((srt_chs_link, srt_file_path))
-                            if re.search(r's\d+.name="\\u82F1\\u6587";s\d+.url="(.+?)"', rdata):  # English
-                                srt_eng_re = re.search(r's\d+.name="\\u82F1\\u6587";s\d+.url="(?P<url>.+?)"', rdata)
-                                srt_file_name = "{0}.eng.srt".format(lesson_name)
-                                srt_file_path = model.generate_path([srt_path, srt_file_name])
-                                srt_eng_link = srt_eng_re.group("url")
-                                print("字幕Eng: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_eng_link))
-                                srt_list.append((srt_eng_link, srt_file_path))
-                        video_in_chapter_list[-1] += 1
+                    try:
+                        if lesson_content_type == 1:  # Video
+                            count = video_in_chapter_list[-1]
+                            count_lesson_name = "{0} {lesson}".format(count, lesson=lesson_name)
+                            for k in ['mp4ShdUrl', 'mp4HdUrl', 'mp4SdUrl']:  # , 'flvShdUrl', 'flvHdUrl', 'flvSdUrl'
+                                if re.search(r's\d+.{0}=".+?";'.format(k), rdata):
+                                    k_type = re.search("mp4(.+)Url", k).group(1)
+                                    video_file_name = "{0}.mp4".format(count_lesson_name)
+                                    if k_type != "Shd":
+                                        video_file_name = "{0}_{type}.mp4".format(count_lesson_name, type=k_type)
+                                    video_link = re.search(r's\d+.' + str(k) + r'="(.+?\.mp4.+?)";', rdata).group(1)
+                                    video_file_path = model.generate_path(
+                                        [main_path, lesson_loc_pattern, video_file_name])
+                                    main_list.append((video_link, video_file_path))
+                                    print("视频: \"{name}\" \"{link}\"".format(name=video_file_name, link=video_link))
+                                    break
+                            # Subtitle
+                            if config.Download_Srt:
+                                srt_path = model.generate_path([main_path, "Srt", lesson_loc_pattern])
+                                if re.search(r's\d+.name="\\u4E2D\\u6587";s\d+.url="(.+?)"', rdata):  # Chinese
+                                    srt_chs_re = re.search(r's\d+.name="\\u4E2D\\u6587";s\d+.url="(?P<url>.+?)"', rdata)
+                                    srt_file_name = "{0}.chs.srt".format(count_lesson_name)
+                                    srt_file_path = model.generate_path([srt_path, srt_file_name])
+                                    srt_chs_link = srt_chs_re.group("url")
+                                    print("字幕Chs: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_chs_link))
+                                    srt_list.append((srt_chs_link, srt_file_path))
+                                if re.search(r's\d+.name="\\u82F1\\u6587";s\d+.url="(.+?)"', rdata):  # English
+                                    srt_eng_re = re.search(r's\d+.name="\\u82F1\\u6587";s\d+.url="(?P<url>.+?)"', rdata)
+                                    srt_file_name = "{0}.eng.srt".format(lesson_name)
+                                    srt_file_path = model.generate_path([srt_path, srt_file_name])
+                                    srt_eng_link = srt_eng_re.group("url")
+                                    print("字幕Eng: \"{name}\" \"{link}\"".format(name=srt_file_name, link=srt_eng_link))
+                                    srt_list.append((srt_eng_link, srt_file_path))
+                            video_in_chapter_list[-1] += 1
 
-                    if lesson_content_type == 3 and config.Download_Docs:  # Documentation
-                        doc_link = str(re.search(r'textOrigUrl:"(.+?)"', rdata).group(1))
-                        doc_name = "{0}.pdf".format(lesson_name)
-                        doc_path = model.generate_path([main_path, "Docs", lesson_loc_pattern])
-                        doc_file_path = model.generate_path([doc_path, doc_name])
-                        doc_list.append((doc_link, doc_file_path))
-                        print("文档: \"{name}\" \"{link}\"".format(name=doc_name, link=doc_link))
+                        if lesson_content_type == 3 and config.Download_Docs:  # Documentation
+                            doc_link = str(re.search(r'textOrigUrl:"(.+?)"', rdata).group(1))
+                            doc_name = model.clean_filename(re.search(r'download=(.+)', doc_link).group(1))
+                            doc_path = model.generate_path([main_path, "Docs", lesson_loc_pattern])
+                            doc_file_path = model.generate_path([doc_path, doc_name])
+                            doc_list.append((doc_link, doc_file_path))
+                            print("文档: \"{name}\" \"{link}\"".format(name=doc_name, link=doc_link))
+                    except AttributeError:
+                        err_message = model.raw_unicode_escape(re.search(r'message:(.+)\}\)', rdata).group(1))
+                        print("Error:{0},Please make sure your \"Session-Cookies\" pair is right.".format(err_message))
+                        return
 
             if config.Download:  # study163的下载均需session认证，不能调用aria2
-                model.download_queue(session, main_list + srt_list + doc_list, queue_length=config.Download_Queue_Length)
+                model.download_queue(session, srt_list + doc_list + main_list,
+                                     queue_length=config.Download_Queue_Length)
         else:
             err_message = re.search(r'message:(.+)\}\)', rdata).group(1)
-            print("Error:{0},Please make sure you login by 163-email "
-                  "and your \"Session-Cookies\" pair is right.".format(err_message))
+            print("Error:{0},Please make sure your \"Session-Cookies\" pair is right.".format(err_message))
     else:
         print("No course Id,Please check!")
         return
