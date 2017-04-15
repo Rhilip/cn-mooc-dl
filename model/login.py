@@ -20,9 +20,9 @@ def cookies_raw2jar(raw: str) -> dict:
 def login_session(site="DEFAULT", conf=None) -> requests.session():
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.87 Safari/537.36',
-        'Accept-Encoding': 'gzip, deflate',
-        'Accept-Language': 'zh-CN,zh;q=0.8',
-        'Content-Type': 'text/plain',
+        # 'Accept-Encoding': 'gzip, deflate',
+        # 'Accept-Language': 'zh-CN,zh;q=0.8',
+        # 'Content-Type': 'text/plain',
     }
     login_session = requests.Session()
     login_session.headers.update(headers)
