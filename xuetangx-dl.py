@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import json
 import re
 from bs4 import BeautifulSoup
 
@@ -7,9 +6,9 @@ import model
 
 
 # From video_ccid to video download link
-def getvideo(session, video_id):
+def get_video(session, video_id):
     r = session.get(url="http://www.xuetangx.com/videoid2source/{0}".format(video_id))
-    resp_json = json.loads(r.text)
+    resp_json = r.json()
     try:
         if len(resp_json['sources']['quality20']) != 0:
             video_link = resp_json['sources']['quality20'][0]
@@ -17,6 +16,7 @@ def getvideo(session, video_id):
             video_link = resp_json['sources']['quality10'][0]
     except AttributeError:
         print("Error,Server Respond:", r.text)
+    # except ValueError:
     else:
         return video_link
 
@@ -58,7 +58,7 @@ def main(course_url):
             video_box = course_detail_bs.find('div', class_='video_box')
             try:
                 info_img_link = model.link_check("http://www.xuetangx.com", video_box['data-poster'])
-                info_video_link = getvideo(session, video_box["data-ccid"])
+                info_video_link = get_video(session, video_box["data-ccid"])
                 if info_video_link:
                     video_file_name = r"课程简介-{title}.mp4".format(title=course_title)
                     video_file_path = model.generate_path([main_path, video_file_name])
@@ -124,7 +124,7 @@ def main(course_url):
 
                         if re.search(r"data-type=[\'\"]Video[\'\"]", seq.text):  # 视频
                             lesson_ccsource = re.search(r"data-ccsource=[\'\"](.+)[\'\"]", seq.text).group(1)
-                            video_link = getvideo(session, lesson_ccsource)
+                            video_link = get_video(session, lesson_ccsource)
                             video_file_name = "{0}.mp4".format(seq_name)
                             if video_link.find == -1:
                                 video_file_name = "{0}_sd.mp4".format(seq_name)
